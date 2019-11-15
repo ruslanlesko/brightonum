@@ -6,12 +6,12 @@ import (
 
 // User structure
 type User struct {
-	ID        int
-	Username  string
-	FirstName string
-	LastName  string
-	Email     string
-	Password  string
+	ID        int		`bson:"id"`
+	Username  string	`bson:"username`
+	FirstName string	`bson:"firstName"`
+	LastName  string	`bson:"lastName"`
+	Email     string	`bson:"email"`
+	Password  string	`bson:"password"`
 }
 
 func (u *User) toJSON() []byte {

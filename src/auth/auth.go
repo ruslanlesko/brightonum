@@ -122,7 +122,8 @@ func main() {
 		fmt.Printf("Cannot parse arguments: %s", err.Error())
 	}
 
-	dao := MemoryUserDao{Users: make(map[int]*User), LatestID: 0}
+	// dao := MemoryUserDao{Users: make(map[int]*User), LatestID: 0}
+	dao := MongoUserDao{"mongodb://pcusr:pcpwd@localhost/pichubdb"}
 	service := AuthService{UserDao: &dao, Config: conf}
 	auth := Auth{AuthService: &service}
 	auth.start()
