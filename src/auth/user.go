@@ -7,7 +7,7 @@ import (
 // User structure
 type User struct {
 	ID        int		`bson:"id"`
-	Username  string	`bson:"username`
+	Username  string	`bson:"username"`
 	FirstName string	`bson:"firstName"`
 	LastName  string	`bson:"lastName"`
 	Email     string	`bson:"email"`
