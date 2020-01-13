@@ -2,8 +2,9 @@ package main
 
 import (
 	"testing"
-	"github.com/stretchr/testify/mock"
+
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 )
 
 type MockUserDao struct {
@@ -43,7 +44,7 @@ func TestAuthService_BasicAuthToken(t *testing.T) {
 	assert.Nil(t, err)
 	assert.NotEmpty(t, token)
 
-	token, err = s.BasicAuthToken(username, password + "xyz")
+	token, err = s.BasicAuthToken(username, password+"xyz")
 	assert.Empty(t, token)
 	assert.Equal(t, AuthError{"not matches"}, err)
 }
@@ -94,5 +95,5 @@ func createTestUser() User {
 }
 
 func createTestConfig() Config {
-	return Config{PrivKeyPath: "key", PubKeyPath: "key.pub"}
+	return Config{PrivKeyPath: "../../test_data/private.pem", PubKeyPath: "../../test_data/public.pem"}
 }
