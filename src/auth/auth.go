@@ -1,13 +1,14 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
+	"strings"
+
 	"github.com/go-chi/chi"
 	"github.com/jessevdk/go-flags"
-	"strconv"
-	"encoding/json"
-	"strings"
 )
 
 // Auth provides main function and routing
@@ -22,9 +23,12 @@ type Config struct {
 
 	// Path to a public key
 	PubKeyPath string `long:"pubkey" required:"true" description:"Path to a public key"`
+
+	// MongoDB URL
+	MongoDBURL string `long:"mongoURL" required:"true" description:"URL for MongoDB"`
 }
 
-func (a * Auth) getUser(w http.ResponseWriter, r *http.Request) {
+func (a *Auth) getUser(w http.ResponseWriter, r *http.Request) {
 	header := r.Header.Get("Authorization")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Headers", "authorization")
@@ -122,8 +126,7 @@ func main() {
 		fmt.Printf("Cannot parse arguments: %s", err.Error())
 	}
 
-	// dao := MemoryUserDao{Users: make(map[int]*User), LatestID: 0}
-	dao := MongoUserDao{"mongodb://pcusr:pcpwd@localhost/pichubdb"}
+	dao := MongoUserDao{conf.MongoDBURL}
 	service := AuthService{UserDao: &dao, Config: conf}
 	auth := Auth{AuthService: &service}
 	auth.start()
