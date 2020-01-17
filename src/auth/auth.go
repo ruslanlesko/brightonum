@@ -9,7 +9,10 @@ import (
 
 	"github.com/go-chi/chi"
 	"github.com/jessevdk/go-flags"
+	"github.com/go-pkgz/lgr"
 )
+
+var logger = lgr.New(lgr.Debug, lgr.Format(`{{.Level}} {{.DT.Format "2006-01-02 15:04:05.000"}} {{.Message}}`))
 
 // Auth provides main function and routing
 type Auth struct {
@@ -36,22 +39,26 @@ func (a *Auth) getUser(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Headers", "authorization")
 	if header == "" {
+		logger.Logf("ERROR Token is missing")
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
 	currentUser := a.AuthService.GetUserByToken(strings.Split(header, " ")[1])
 	if currentUser == nil {
+		logger.Logf("ERROR Token is invalid")
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
 	userIDStr := chi.URLParam(r, "userID")
 	userID, err := strconv.Atoi(userIDStr)
 	if err != nil {
+		logger.Logf("ERROR Cannot parse user ID: %s", userID)
 		w.Write([]byte(err.Error()))
 		return
 	}
 	if currentUser.ID != userID {
 		w.WriteHeader(http.StatusUnauthorized)
+		logger.Logf("WARN Unauthorized access attempt")
 		return
 	}
 	w.Write(currentUser.toJSON())
@@ -60,11 +67,13 @@ func (a *Auth) getUser(w http.ResponseWriter, r *http.Request) {
 func (a *Auth) createUser(w http.ResponseWriter, r *http.Request) {
 	var newUser User
 	if r.Body == nil {
+		logger.Logf("ERROR Data is missing")
 		w.Write([]byte("No data"))
 		return
 	}
 	err := json.NewDecoder(r.Body).Decode(&newUser)
 	if err != nil {
+		logger.Logf("ERROR Cannot decode JSON payload")
 		w.Write([]byte(err.Error()))
 		return
 	}
@@ -81,9 +90,11 @@ func (a *Auth) getToken(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Headers", "authorization")
 	if t == "refresh_token" {
+		logger.Logf("INFO Refreshing token")
 		refToken := strings.Split(r.Header.Get("Authorization"), " ")[1]
 		token, err := a.AuthService.RefreshToken(refToken)
 		if err != nil {
+			logger.Logf("WARN Cannot refresh token: %s", err.Error())
 			w.Write([]byte(err.Error()))
 		} else {
 			w.Write([]byte(token))
@@ -94,12 +105,14 @@ func (a *Auth) getToken(w http.ResponseWriter, r *http.Request) {
 	if ok {
 		token, err := a.AuthService.BasicAuthToken(u, p)
 		if err != nil {
+			logger.Logf("WARN Cannot issue token: %s", err.Error())
 			w.Write([]byte(err.Error()))
 		} else {
 			w.Write([]byte(token))
 		}
 		return
 	}
+	logger.Logf("ERROR Basic Auth is missing")
 	w.Write([]byte("error"))
 }
 
@@ -109,7 +122,6 @@ func (a *Auth) options(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *Auth) start() {
-	fmt.Printf("Starting the server...\n")
 	r := chi.NewRouter()
 	r.Route("/v1", func(r chi.Router) {
 		r.Options("/*", a.options)
@@ -126,11 +138,12 @@ func main() {
 	_, err := flags.Parse(&conf)
 
 	if err != nil {
-		fmt.Printf("Cannot parse arguments: %s", err.Error())
+		logger.Logf("FATAL Cannot parse arguments: %s", err.Error())
 	}
 
 	dao := MongoUserDao{URL: conf.MongoDBURL, databaseName: conf.DatabaseName}
 	service := AuthService{UserDao: &dao, Config: conf}
 	auth := Auth{AuthService: &service}
+	logger.Logf("INFO Auth 1.0 is starting")
 	auth.start()
 }

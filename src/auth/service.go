@@ -15,6 +15,7 @@ type AuthService struct {
 
 // CreateUser creates new User
 func (s *AuthService) CreateUser(u *User) {
+	logger.Logf("DEBUG creating user")
 	ID := s.UserDao.Save(u)
 	u.ID = ID
 }
