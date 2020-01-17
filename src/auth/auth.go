@@ -26,6 +26,9 @@ type Config struct {
 
 	// MongoDB URL
 	MongoDBURL string `long:"mongoURL" required:"true" description:"URL for MongoDB"`
+
+	// Database name
+	DatabaseName string `long:"databaseName" required:"true" description:"Database name"`
 }
 
 func (a *Auth) getUser(w http.ResponseWriter, r *http.Request) {
@@ -126,7 +129,7 @@ func main() {
 		fmt.Printf("Cannot parse arguments: %s", err.Error())
 	}
 
-	dao := MongoUserDao{conf.MongoDBURL}
+	dao := MongoUserDao{URL: conf.MongoDBURL, databaseName: conf.DatabaseName}
 	service := AuthService{UserDao: &dao, Config: conf}
 	auth := Auth{AuthService: &service}
 	auth.start()

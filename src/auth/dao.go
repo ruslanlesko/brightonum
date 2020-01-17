@@ -38,6 +38,7 @@ func (d *MemoryUserDao) GetByUsername(username string) *User {
 // MongoUserDao provides UserDao implementation via MongoDB
 type MongoUserDao struct {
 	URL	string
+	databaseName string
 }
 
 // MaxIDResponse for response on pipe
@@ -56,7 +57,7 @@ func (d *MongoUserDao) Save(u *User) int {
 
 	result := []MaxIDResponse{}
 
-	collection := session.DB("pichubdb").C("users")
+	collection := session.DB(d.databaseName).C("users")
 	err = collection.Pipe([]bson.M{
 		{"$group": 
 			bson.M{
@@ -91,7 +92,7 @@ func (d *MongoUserDao) GetByUsername(username string) *User {
 
 	result := []User{}
 
-	collection := session.DB("pichubdb").C("users")
+	collection := session.DB(d.databaseName).C("users")
 	err = collection.Find(bson.M{
 		"username": username,
 	}).All(&result)
