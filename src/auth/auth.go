@@ -52,7 +52,7 @@ func (a *Auth) getUser(w http.ResponseWriter, r *http.Request) {
 	userIDStr := chi.URLParam(r, "userID")
 	userID, err := strconv.Atoi(userIDStr)
 	if err != nil {
-		logger.Logf("ERROR Cannot parse user ID: %s", userID)
+		logger.Logf("ERROR Cannot parse user ID: %d", userID)
 		w.Write([]byte(err.Error()))
 		return
 	}
