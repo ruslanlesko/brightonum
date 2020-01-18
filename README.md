@@ -2,9 +2,9 @@
 
 ## API
 
-GET `/v1/users/{userId}` Returns user in JSON payload.
-POST `/v1/users` Creates user from JSON payload. Required string fields: Username, FirstName, LastName, Email, Password
-POST `/v1/token` Issues a token using basic auth.
+* GET `/v1/users/{userId}` Returns user in JSON payload.
+* POST `/v1/users` Creates user from JSON payload. Required string fields: Username, FirstName, LastName, Email, Password
+* POST `/v1/token` Issues a token using basic auth.
 
 ## Required Parameters
 
