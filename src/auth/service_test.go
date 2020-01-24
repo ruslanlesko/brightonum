@@ -3,6 +3,7 @@ package main
 import (
 	"testing"
 
+	"github.com/dgrijalva/jwt-go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -43,6 +44,7 @@ func TestAuthService_BasicAuthToken(t *testing.T) {
 	token, err := s.BasicAuthToken(username, password)
 	assert.Nil(t, err)
 	assert.NotEmpty(t, token)
+	assert.True(t, testJWTIntField(token, "userId", 42))
 
 	token, err = s.BasicAuthToken(username, password+"xyz")
 	assert.Empty(t, token)
@@ -91,9 +93,33 @@ func TestAuthService_GetUserByToken(t *testing.T) {
 }
 
 func createTestUser() User {
-	return User{-1, "alle", "test", "user", "test@email.com", "oakheart"}
+	return User{42, "alle", "test", "user", "test@email.com", "oakheart"}
 }
 
 func createTestConfig() Config {
 	return Config{PrivKeyPath: "../../test_data/private.pem", PubKeyPath: "../../test_data/public.pem"}
+}
+
+func testJWTIntField(tokenStr string, fieldName string, fieldValue int) bool {
+	token, _, err := new(jwt.Parser).ParseUnverified(tokenStr, jwt.MapClaims{})
+	if err != nil {
+		return false
+	}
+
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if !ok {
+		return false
+	}
+
+	vErr := claims.Valid()
+	if vErr != nil {
+		return false
+	}
+
+	actualValue, ok := claims[fieldName].(float64)
+	if ok {
+		return int(actualValue) == fieldValue
+	}
+
+	return false
 }
