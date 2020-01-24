@@ -45,6 +45,7 @@ func TestAuthService_BasicAuthToken(t *testing.T) {
 	assert.Nil(t, err)
 	assert.NotEmpty(t, token)
 	assert.True(t, testJWTIntField(token, "userId", 42))
+	assert.True(t, testJWTStringField(token, "sub", "alle"))
 
 	token, err = s.BasicAuthToken(username, password+"xyz")
 	assert.Empty(t, token)
@@ -101,25 +102,48 @@ func createTestConfig() Config {
 }
 
 func testJWTIntField(tokenStr string, fieldName string, fieldValue int) bool {
-	token, _, err := new(jwt.Parser).ParseUnverified(tokenStr, jwt.MapClaims{})
-	if err != nil {
+	value := exctractField(tokenStr, fieldName)
+	if value == nil {
 		return false
 	}
 
-	claims, ok := token.Claims.(jwt.MapClaims)
-	if !ok {
-		return false
-	}
-
-	vErr := claims.Valid()
-	if vErr != nil {
-		return false
-	}
-
-	actualValue, ok := claims[fieldName].(float64)
+	actualValue, ok := value.(float64)
 	if ok {
 		return int(actualValue) == fieldValue
 	}
 
 	return false
+}
+
+func testJWTStringField(tokenStr string, fieldName string, fieldValue string) bool {
+	value := exctractField(tokenStr, fieldName)
+	if value == nil {
+		return false
+	}
+
+	actualValue, ok := value.(string)
+	if !ok {
+		return false
+	}
+
+	return actualValue == fieldValue
+}
+
+func exctractField(tokenStr string, fieldName string) interface{} {
+	token, _, err := new(jwt.Parser).ParseUnverified(tokenStr, jwt.MapClaims{})
+	if err != nil {
+		return nil
+	}
+
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if !ok {
+		return nil
+	}
+
+	actualValue, ok := claims[fieldName]
+	if !ok {
+		return nil
+	}
+
+	return actualValue
 }
