@@ -2,6 +2,7 @@ package main
 
 import (
 	"testing"
+	"time"
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/stretchr/testify/assert"
@@ -47,10 +48,16 @@ func TestAuthService_BasicAuthToken(t *testing.T) {
 	assert.True(t, testJWTIntField(token, "userId", 42))
 	assert.True(t, testJWTStringField(token, "sub", "alle"))
 
+	expRaw := exctractField(token, "exp")
+	exp := int64(expRaw.(float64))
+	estimatedEx := time.Now().Add(time.Hour).UTC().Unix()
+	assert.True(t, exp >= estimatedEx - 1 && exp <= estimatedEx + 1)
+
 	token, err = s.BasicAuthToken(username, password+"xyz")
 	assert.Empty(t, token)
 	assert.Equal(t, AuthError{"not matches"}, err)
 }
+
 
 func TestAuthService_RefreshToken(t *testing.T) {
 	user := createTestUser()
