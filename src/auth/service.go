@@ -21,36 +21,37 @@ func (s *AuthService) CreateUser(u *User) {
 }
 
 // BasicAuthToken issues new token by username and password
-func (s *AuthService) BasicAuthToken(username, passoword string) (string, error) {
+func (s *AuthService) BasicAuthToken(username, passoword string) (string, string, error) {
 	user := s.UserDao.GetByUsername(username)
 
 	if user == nil || user.Password != passoword {
-		return "", AuthError{"not matches"}
+		return "", "", AuthError{"not matches"}
 	}
 
+	tokenString, err := s.issueAccessToken(user)
+	if err != nil {
+		return "", "", err
+	}
+
+	refreshTokenString, err := s.issueRefreshToken(user)
+	if err != nil {
+		return "", "", err
+	}
+
+	return tokenString, refreshTokenString, nil
+}
+
+func (s *AuthService) issueAccessToken(user *User) (string, error) {
 	keyData, _ := ioutil.ReadFile(s.Config.PrivKeyPath)
 	key, _ := jwt.ParseRSAPrivateKeyFromPEM(keyData)
 
-	refreshToken := jwt.NewWithClaims(jwt.SigningMethodRS256, jwt.MapClaims{
-		"sub": username,
-		"exp": time.Now().AddDate(1, 0, 0).UTC().Unix(),
-	})
-
-	refreshTokenString, err := refreshToken.SignedString(key)
-
-	if err != nil {
-		return "", err
-	}
-
 	token := jwt.NewWithClaims(jwt.SigningMethodRS256, jwt.MapClaims{
-		"sub": username,
+		"sub": user.Username,
 		"userId": user.ID,
 		"exp": time.Now().Add(time.Hour).UTC().Unix(),
-		"refresh_token": refreshTokenString,
 	})
 
 	tokenString, err := token.SignedString(key)
-
 	if err != nil {
 		return "", err
 	}
@@ -58,11 +59,29 @@ func (s *AuthService) BasicAuthToken(username, passoword string) (string, error)
 	return tokenString, nil
 }
 
+func (s *AuthService) issueRefreshToken(user *User) (string, error) {
+	keyData, _ := ioutil.ReadFile(s.Config.PrivKeyPath)
+	key, _ := jwt.ParseRSAPrivateKeyFromPEM(keyData)
+
+	refreshToken := jwt.NewWithClaims(jwt.SigningMethodRS256, jwt.MapClaims{
+		"sub": user.Username,
+		"exp": time.Now().AddDate(1, 0, 0).UTC().Unix(),
+	})
+
+	refreshTokenString, err := refreshToken.SignedString(key)
+	if err != nil {
+		return "", err
+	}
+
+	return refreshTokenString, nil
+}
+
 // RefreshToken refreshes existing token
 func (s *AuthService) RefreshToken(t string) (string, error) {
 	u, ok := s.validateRefreshToken(t)
 	if ok {
-		return s.BasicAuthToken(u.Username, u.Password)
+		accessToken, err := s.issueAccessToken(u)
+		return accessToken, err
 	}
 	return "", AuthError{"not validated"}
 }

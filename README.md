@@ -4,9 +4,9 @@
 
 * GET `/v1/users/{userId}` Returns user in JSON payload.
 * POST `/v1/users` Creates user from JSON payload. Required string fields: Username, FirstName, LastName, Email, Password
-* POST `/v1/token` Issues a token using basic auth.
+* POST `/v1/token` Issues a token using basic auth. Returns JSON with 2 fields: accessToken and refreshToken
 
-### As the result of the /token endpoint you get RS256 JWT with the following payload:
+### Payload of the access token is listed below:
 ```
 {
   "exp": 1579794679,
@@ -16,6 +16,14 @@
 }
 ```
 Token will expire in an hour. `exp` field is Unix time.
+### Payload of the refresh token is listed below:
+```
+{
+  "exp": 1579794679,
+  "sub": "sarah"
+}
+```
+Token will expire in a day. `exp` field is Unix time.
 
 ## Required Parameters
 

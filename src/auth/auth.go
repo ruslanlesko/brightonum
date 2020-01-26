@@ -80,7 +80,6 @@ func (a *Auth) createUser(w http.ResponseWriter, r *http.Request) {
 	a.AuthService.CreateUser(&newUser)
 	newID := newUser.ID
 	response := fmt.Sprintf("{\"id\": %d}", newID)
-	fmt.Println(response)
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Write([]byte(response))
 }
@@ -103,12 +102,12 @@ func (a *Auth) getToken(w http.ResponseWriter, r *http.Request) {
 	}
 	u, p, ok := r.BasicAuth()
 	if ok {
-		token, err := a.AuthService.BasicAuthToken(u, p)
+		accessToken, refreshToken, err := a.AuthService.BasicAuthToken(u, p)
 		if err != nil {
 			logger.Logf("WARN Cannot issue token: %s", err.Error())
 			w.Write([]byte(err.Error()))
 		} else {
-			w.Write([]byte(token))
+			w.Write([]byte(formatJSONResponse(accessToken, refreshToken)))
 		}
 		return
 	}
@@ -130,6 +129,10 @@ func (a *Auth) start() {
 		r.Post("/token", a.getToken)
 	})
 	http.ListenAndServe(":2525", r)
+}
+
+func formatJSONResponse(accessToken, refreshToken string) string {
+	return fmt.Sprintf("{\"accessToken\":\"%s\",\"refreshToken\":\"%s\"}", accessToken, refreshToken)
 }
 
 func main() {

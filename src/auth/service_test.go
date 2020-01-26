@@ -42,22 +42,29 @@ func TestAuthService_BasicAuthToken(t *testing.T) {
 	dao.On("GetByUsername", username).Return(&user)
 
 	s := AuthService{&dao, createTestConfig()}
-	token, err := s.BasicAuthToken(username, password)
+	accessToken, refreshToken, err := s.BasicAuthToken(username, password)
 	assert.Nil(t, err)
-	assert.NotEmpty(t, token)
-	assert.True(t, testJWTIntField(token, "userId", 42))
-	assert.True(t, testJWTStringField(token, "sub", "alle"))
+	assert.NotEmpty(t, accessToken)
+	assert.True(t, testJWTIntField(accessToken, "userId", 42))
+	assert.True(t, testJWTStringField(accessToken, "sub", "alle"))
+	assert.NotEmpty(t, refreshToken)
+	assert.True(t, testJWTStringField(refreshToken, "sub", "alle"))
 
-	expRaw := exctractField(token, "exp")
+	expRaw := exctractField(accessToken, "exp", -1)
 	exp := int64(expRaw.(float64))
 	estimatedEx := time.Now().Add(time.Hour).UTC().Unix()
 	assert.True(t, exp >= estimatedEx - 1 && exp <= estimatedEx + 1)
 
-	token, err = s.BasicAuthToken(username, password+"xyz")
-	assert.Empty(t, token)
+	expRaw = exctractField(refreshToken, "exp", -1)
+	exp = int64(expRaw.(float64))
+	estimatedEx = time.Now().AddDate(1, 0, 0).UTC().Unix()
+	assert.True(t, exp >= estimatedEx - 1 && exp <= estimatedEx + 1)
+
+	accessToken, refreshToken, err = s.BasicAuthToken(username, password+"xyz")
+	assert.Empty(t, accessToken)
+	assert.Empty(t, refreshToken)
 	assert.Equal(t, AuthError{"not matches"}, err)
 }
-
 
 func TestAuthService_RefreshToken(t *testing.T) {
 	user := createTestUser()
@@ -68,11 +75,11 @@ func TestAuthService_RefreshToken(t *testing.T) {
 	dao.On("GetByUsername", username).Return(&user)
 
 	s := AuthService{&dao, createTestConfig()}
-	token, err := s.BasicAuthToken(username, password)
+	accessToken, refreshToken, err := s.BasicAuthToken(username, password)
 	assert.Nil(t, err)
-	assert.NotEmpty(t, token)
+	assert.NotEmpty(t, accessToken)
 
-	refreshedToken, err := s.RefreshToken(token)
+	refreshedToken, err := s.RefreshToken(refreshToken)
 	assert.Nil(t, err)
 	assert.NotEmpty(t, refreshedToken)
 
@@ -90,7 +97,7 @@ func TestAuthService_GetUserByToken(t *testing.T) {
 	dao.On("GetByUsername", username).Return(&user)
 
 	s := AuthService{&dao, createTestConfig()}
-	token, err := s.BasicAuthToken(username, password)
+	token, _, err := s.BasicAuthToken(username, password)
 	assert.Nil(t, err)
 
 	u := s.GetUserByToken(token)
@@ -109,10 +116,7 @@ func createTestConfig() Config {
 }
 
 func testJWTIntField(tokenStr string, fieldName string, fieldValue int) bool {
-	value := exctractField(tokenStr, fieldName)
-	if value == nil {
-		return false
-	}
+	value := exctractField(tokenStr, fieldName, -1)
 
 	actualValue, ok := value.(float64)
 	if ok {
@@ -123,10 +127,7 @@ func testJWTIntField(tokenStr string, fieldName string, fieldValue int) bool {
 }
 
 func testJWTStringField(tokenStr string, fieldName string, fieldValue string) bool {
-	value := exctractField(tokenStr, fieldName)
-	if value == nil {
-		return false
-	}
+	value := exctractField(tokenStr, fieldName, "")
 
 	actualValue, ok := value.(string)
 	if !ok {
@@ -136,20 +137,20 @@ func testJWTStringField(tokenStr string, fieldName string, fieldValue string) bo
 	return actualValue == fieldValue
 }
 
-func exctractField(tokenStr string, fieldName string) interface{} {
+func exctractField(tokenStr string, fieldName string, defaultValue interface{}) interface{} {
 	token, _, err := new(jwt.Parser).ParseUnverified(tokenStr, jwt.MapClaims{})
 	if err != nil {
-		return nil
+		return defaultValue
 	}
 
 	claims, ok := token.Claims.(jwt.MapClaims)
 	if !ok {
-		return nil
+		return defaultValue
 	}
 
 	actualValue, ok := claims[fieldName]
 	if !ok {
-		return nil
+		return defaultValue
 	}
 
 	return actualValue
