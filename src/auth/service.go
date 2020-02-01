@@ -14,17 +14,27 @@ type AuthService struct {
 }
 
 // CreateUser creates new User
-func (s *AuthService) CreateUser(u *User) {
+func (s *AuthService) CreateUser(u *User) error {
 	logger.Logf("DEBUG creating user")
+
+	hashedPassword, err := Hash(u.Password)
+	if err != nil {
+		logger.Logf("ERROR Failed to hash password, %s", err.Error())
+		return err
+	}
+
+	u.Password = hashedPassword
+
 	ID := s.UserDao.Save(u)
 	u.ID = ID
+	return nil
 }
 
 // BasicAuthToken issues new token by username and password
-func (s *AuthService) BasicAuthToken(username, passoword string) (string, string, error) {
+func (s *AuthService) BasicAuthToken(username, password string) (string, string, error) {
 	user := s.UserDao.GetByUsername(username)
 
-	if user == nil || user.Password != passoword {
+	if user == nil || !Match(password, user.Password) {
 		return "", "", AuthError{"not matches"}
 	}
 

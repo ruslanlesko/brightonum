@@ -77,7 +77,13 @@ func (a *Auth) createUser(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(err.Error()))
 		return
 	}
-	a.AuthService.CreateUser(&newUser)
+	err = a.AuthService.CreateUser(&newUser)
+	if err != nil {
+		logger.Logf("ERROR Cannot create user")
+		w.Write([]byte(err.Error()))
+		return
+	}
+
 	newID := newUser.ID
 	response := fmt.Sprintf("{\"id\": %d}", newID)
 	w.Header().Set("Access-Control-Allow-Origin", "*")
