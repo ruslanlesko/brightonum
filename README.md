@@ -5,6 +5,7 @@
 * GET `/v1/users/{userId}` Returns user in JSON payload.
 * POST `/v1/users` Creates user from JSON payload. Required string fields: Username, FirstName, LastName, Email, Password
 * POST `/v1/token` Issues a token using basic auth. Returns JSON with 2 fields: accessToken and refreshToken
+* POST `/v1/token?type=refresh_token` Issues an access token using refresh token (bearer)
 
 ### Payload of the access token is listed below:
 ```
