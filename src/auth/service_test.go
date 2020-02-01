@@ -36,7 +36,7 @@ func TestAuthService_CreateUser(t *testing.T) {
 func TestAuthService_BasicAuthToken(t *testing.T) {
 	user := createTestUser()
 	username := user.Username
-	password := user.Password
+	password := "oakheart"
 
 	dao := MockUserDao{}
 	dao.On("GetByUsername", username).Return(&user)
@@ -69,7 +69,7 @@ func TestAuthService_BasicAuthToken(t *testing.T) {
 func TestAuthService_RefreshToken(t *testing.T) {
 	user := createTestUser()
 	username := user.Username
-	password := user.Password
+	password := "oakheart"
 
 	dao := MockUserDao{}
 	dao.On("GetByUsername", username).Return(&user)
@@ -91,7 +91,7 @@ func TestAuthService_RefreshToken(t *testing.T) {
 func TestAuthService_GetUserByToken(t *testing.T) {
 	user := createTestUser()
 	username := user.Username
-	password := user.Password
+	password := "oakheart"
 
 	dao := MockUserDao{}
 	dao.On("GetByUsername", username).Return(&user)
@@ -108,7 +108,7 @@ func TestAuthService_GetUserByToken(t *testing.T) {
 }
 
 func createTestUser() User {
-	return User{42, "alle", "test", "user", "test@email.com", "oakheart"}
+	return User{42, "alle", "test", "user", "test@email.com", "$2a$04$Mhlu1.a4QchlVgGQFc/0N.qAw9tsXqm1OMwjJRaPRCWn47bpsRa4S"}
 }
 
 func createTestConfig() Config {
