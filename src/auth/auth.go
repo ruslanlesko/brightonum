@@ -12,7 +12,8 @@ import (
 	"github.com/go-pkgz/lgr"
 )
 
-var logger = lgr.New(lgr.Debug, lgr.Format(`{{.Level}} {{.DT.Format "2006-01-02 15:04:05.000"}} {{.Message}}`))
+var loggerFormat = lgr.Format(`{{.Level}} {{.DT.Format "2006-01-02 15:04:05.000"}} {{.Message}}`)
+var logger = lgr.New(loggerFormat)
 
 // Auth provides main function and routing
 type Auth struct {
@@ -32,6 +33,9 @@ type Config struct {
 
 	// Database name
 	DatabaseName string `long:"databaseName" required:"true" description:"Database name"`
+
+	// Enable debug logging
+	Debug bool `long:"debug" required:"false" description:"Enable debug logging"`
 }
 
 func (a *Auth) getUser(w http.ResponseWriter, r *http.Request) {
@@ -172,6 +176,10 @@ func main() {
 
 	if err != nil {
 		logger.Logf("FATAL Cannot parse arguments: %s", err.Error())
+	}
+
+	if conf.Debug {
+		logger = lgr.New(lgr.Debug, loggerFormat)
 	}
 
 	dao := MongoUserDao{URL: conf.MongoDBURL, databaseName: conf.DatabaseName}
