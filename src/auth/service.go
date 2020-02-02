@@ -17,6 +17,13 @@ type AuthService struct {
 func (s *AuthService) CreateUser(u *User) error {
 	logger.Logf("DEBUG creating user")
 
+	uname := u.Username
+
+	if s.usernameExists(uname) {
+		logger.Logf("WARN Username %s already exists", uname)
+		return AuthError{Msg: "Username already exists", Status: 400}
+	}
+
 	hashedPassword, err := Hash(u.Password)
 	if err != nil {
 		logger.Logf("ERROR Failed to hash password, %s", err.Error())
@@ -30,12 +37,17 @@ func (s *AuthService) CreateUser(u *User) error {
 	return nil
 }
 
+func (s *AuthService) usernameExists(username string) bool {
+	u := s.UserDao.GetByUsername(username)
+	return u != nil
+}
+
 // BasicAuthToken issues new token by username and password
 func (s *AuthService) BasicAuthToken(username, password string) (string, string, error) {
 	user := s.UserDao.GetByUsername(username)
 
 	if user == nil || !Match(password, user.Password) {
-		return "", "", AuthError{"not matches"}
+		return "", "", AuthError{Msg: "Username or password is wrong", Status: 403}
 	}
 
 	tokenString, err := s.issueAccessToken(user)
@@ -93,7 +105,7 @@ func (s *AuthService) RefreshToken(t string) (string, error) {
 		accessToken, err := s.issueAccessToken(u)
 		return accessToken, err
 	}
-	return "", AuthError{"not validated"}
+	return "", AuthError{Msg: "Refresh token is not valid", Status: 403}
 }
 
 func (s *AuthService) validateRefreshToken(t string) (*User, bool) {

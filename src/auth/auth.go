@@ -80,6 +80,12 @@ func (a *Auth) createUser(w http.ResponseWriter, r *http.Request) {
 	err = a.AuthService.CreateUser(&newUser)
 	if err != nil {
 		logger.Logf("ERROR Cannot create user")
+		authErr, isAuthErr := err.(AuthError)
+		if isAuthErr {
+			w.WriteHeader(authErr.Status)
+		} else {
+			w.WriteHeader(500)
+		}
 		w.Write([]byte(fmtErrorResponse(err.Error())))
 		return
 	}
@@ -101,6 +107,12 @@ func (a *Auth) getToken(w http.ResponseWriter, r *http.Request) {
 		token, err := a.AuthService.RefreshToken(refToken)
 		if err != nil {
 			logger.Logf("WARN Cannot refresh token: %s", err.Error())
+			authErr, isAuthErr := err.(AuthError)
+			if isAuthErr {
+				w.WriteHeader(authErr.Status)
+			} else {
+				w.WriteHeader(500)
+			}
 			w.Write([]byte(fmtErrorResponse(err.Error())))
 		} else {
 			w.Write([]byte(fmtAccTokenResponse(token)))

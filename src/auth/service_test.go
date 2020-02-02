@@ -18,7 +18,11 @@ func (m *MockUserDao) Save(u *User) int {
 }
 
 func (m *MockUserDao) GetByUsername(uname string) *User {
-	return m.Called(uname).Get(0).(*User)
+	provided := m.Called(uname).Get(0)
+	if provided == nil {
+		return nil
+	}
+	return provided.(*User)
 }
 
 func TestAuthService_CreateUser(t *testing.T) {
@@ -26,11 +30,24 @@ func TestAuthService_CreateUser(t *testing.T) {
 
 	dao := MockUserDao{}
 	dao.On("Save", &u).Return(1)
+	dao.On("GetByUsername", u.Username).Return(nil)
 
 	s := AuthService{&dao, createTestConfig()}
-	s.CreateUser(&u)
+	err := s.CreateUser(&u)
 
+	assert.Nil(t, err)
 	dao.AssertExpectations(t)
+}
+
+func TestAuthService_CreateUser_DuplicateHandling(t *testing.T) {
+	u := User{-1, "alle", "Alle", "Alle", "alle@alle.com", "pwd"}
+
+	dao := MockUserDao{}
+	dao.On("GetByUsername", u.Username).Return(&u)
+
+	s := AuthService{&dao, createTestConfig()}
+	err := s.CreateUser(&u)
+	assert.Equal(t, AuthError{Msg: "Username already exists", Status: 400}, err)
 }
 
 func TestAuthService_BasicAuthToken(t *testing.T) {
@@ -63,7 +80,7 @@ func TestAuthService_BasicAuthToken(t *testing.T) {
 	accessToken, refreshToken, err = s.BasicAuthToken(username, password+"xyz")
 	assert.Empty(t, accessToken)
 	assert.Empty(t, refreshToken)
-	assert.Equal(t, AuthError{"not matches"}, err)
+	assert.Equal(t, AuthError{Msg: "Username or password is wrong", Status: 403}, err)
 }
 
 func TestAuthService_RefreshToken(t *testing.T) {
@@ -85,7 +102,7 @@ func TestAuthService_RefreshToken(t *testing.T) {
 
 	refreshedToken, err = s.RefreshToken(refreshedToken + "xyz")
 	assert.Empty(t, refreshedToken)
-	assert.Equal(t, AuthError{"not validated"}, err)
+	assert.Equal(t, AuthError{Msg: "Refresh token is not valid", Status: 403}, err)
 }
 
 func TestAuthService_GetUserByToken(t *testing.T) {

@@ -3,6 +3,7 @@ package main
 // AuthError simple error
 type AuthError struct {
 	Msg string
+	Status int
 }
 
 func (e AuthError) Error() string {
