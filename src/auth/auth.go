@@ -53,7 +53,7 @@ func (a *Auth) getUser(w http.ResponseWriter, r *http.Request) {
 	userID, err := strconv.Atoi(userIDStr)
 	if err != nil {
 		logger.Logf("ERROR Cannot parse user ID: %d", userID)
-		w.Write([]byte(err.Error()))
+		w.Write([]byte(fmtErrorResponse(err.Error())))
 		return
 	}
 	if currentUser.ID != userID {
@@ -68,19 +68,19 @@ func (a *Auth) createUser(w http.ResponseWriter, r *http.Request) {
 	var newUser User
 	if r.Body == nil {
 		logger.Logf("ERROR Data is missing")
-		w.Write([]byte("No data"))
+		w.Write([]byte(fmtErrorResponse("No data")))
 		return
 	}
 	err := json.NewDecoder(r.Body).Decode(&newUser)
 	if err != nil {
 		logger.Logf("ERROR Cannot decode JSON payload")
-		w.Write([]byte(err.Error()))
+		w.Write([]byte(fmtErrorResponse(err.Error())))
 		return
 	}
 	err = a.AuthService.CreateUser(&newUser)
 	if err != nil {
 		logger.Logf("ERROR Cannot create user")
-		w.Write([]byte(err.Error()))
+		w.Write([]byte(fmtErrorResponse(err.Error())))
 		return
 	}
 
@@ -91,6 +91,7 @@ func (a *Auth) createUser(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *Auth) getToken(w http.ResponseWriter, r *http.Request) {
+	logger.Logf("DEBUG Request for issuing a token was accepted")
 	t := r.URL.Query().Get("type")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Headers", "authorization")
@@ -100,9 +101,9 @@ func (a *Auth) getToken(w http.ResponseWriter, r *http.Request) {
 		token, err := a.AuthService.RefreshToken(refToken)
 		if err != nil {
 			logger.Logf("WARN Cannot refresh token: %s", err.Error())
-			w.Write([]byte(err.Error()))
+			w.Write([]byte(fmtErrorResponse(err.Error())))
 		} else {
-			w.Write([]byte(token))
+			w.Write([]byte(fmtAccTokenResponse(token)))
 		}
 		return
 	}
@@ -111,14 +112,14 @@ func (a *Auth) getToken(w http.ResponseWriter, r *http.Request) {
 		accessToken, refreshToken, err := a.AuthService.BasicAuthToken(u, p)
 		if err != nil {
 			logger.Logf("WARN Cannot issue token: %s", err.Error())
-			w.Write([]byte(err.Error()))
+			w.Write([]byte(fmtErrorResponse(err.Error())))
 		} else {
-			w.Write([]byte(formatJSONResponse(accessToken, refreshToken)))
+			w.Write([]byte(fmtAccRefTokenResponse(accessToken, refreshToken)))
 		}
 		return
 	}
 	logger.Logf("ERROR Basic Auth is missing")
-	w.Write([]byte("error"))
+	w.Write([]byte(fmtErrorResponse("Basic Auth is missing from request")))
 }
 
 func (a *Auth) options(w http.ResponseWriter, r *http.Request) {
@@ -137,8 +138,19 @@ func (a *Auth) start() {
 	http.ListenAndServe(":2525", r)
 }
 
-func formatJSONResponse(accessToken, refreshToken string) string {
+// Formats access and refresh token to JSON response
+func fmtAccRefTokenResponse(accessToken, refreshToken string) string {
 	return fmt.Sprintf("{\"accessToken\":\"%s\",\"refreshToken\":\"%s\"}", accessToken, refreshToken)
+}
+
+// Formats access token to JSON response
+func fmtAccTokenResponse(accessToken string) string {
+	return fmt.Sprintf("{\"accessToken\":\"%s\"}", accessToken)
+}
+
+// Formats error response to JSON
+func fmtErrorResponse(err string) string {
+	return fmt.Sprintf("{\"error\":\"%s\"}", err)
 }
 
 func main() {
