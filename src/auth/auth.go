@@ -69,6 +69,7 @@ func (a *Auth) getUser(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *Auth) createUser(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 	var newUser User
 	if r.Body == nil {
 		logger.Logf("ERROR Data is missing")
@@ -128,6 +129,7 @@ func (a *Auth) getToken(w http.ResponseWriter, r *http.Request) {
 		accessToken, refreshToken, err := a.AuthService.BasicAuthToken(u, p)
 		if err != nil {
 			logger.Logf("WARN Cannot issue token: %s", err.Error())
+			w.WriteHeader(400)
 			w.Write([]byte(fmtErrorResponse(err.Error())))
 		} else {
 			w.Write([]byte(fmtAccRefTokenResponse(accessToken, refreshToken)))
