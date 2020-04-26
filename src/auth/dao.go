@@ -9,6 +9,7 @@ import (
 type UserDao interface {
 	Save(*User) int
 	GetByUsername(string) *User
+	Get(int) *User
 }
 
 // MemoryUserDao implementation for UserDao
@@ -33,6 +34,11 @@ func (d *MemoryUserDao) GetByUsername(username string) *User {
 		}
 	}
 	return nil
+}
+
+// Get returns user by id
+func (d *MemoryUserDao) Get(id int) *User {
+	return d.Users[id]
 }
 
 // MongoUserDao provides UserDao implementation via MongoDB
@@ -95,6 +101,28 @@ func (d *MongoUserDao) GetByUsername(username string) *User {
 	collection := session.DB(d.databaseName).C("users")
 	err = collection.Find(bson.M{
 		"username": username,
+	}).All(&result)
+
+	if len(result) == 0 {
+		return nil
+	}
+
+	return &result[0]
+}
+
+// Get returns user by id
+func (d *MongoUserDao) Get(id int) *User {
+	session, err := mgo.Dial(d.URL)
+	if err != nil {
+		panic(err)
+	}
+	defer session.Close()
+
+	result := []User{}
+
+	collection := session.DB(d.databaseName).C("users")
+	err = collection.Find(bson.M{
+		"id": id,
 	}).All(&result)
 
 	if len(result) == 0 {

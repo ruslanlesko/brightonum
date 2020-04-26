@@ -14,7 +14,20 @@ type User struct {
 	Password  string	`bson:"password"`
 }
 
+// UserInfo structure
+type UserInfo struct {
+	ID 			int     `json:"id"`
+	Username 	string  `json:"username"`
+	FirstName 	string  `json:"firstName"`
+	LastName 	string  `json:"lastName"`
+}
+
 func (u *User) toJSON() []byte {
+	data, _ := json.Marshal(u)
+	return data
+}
+
+func (u *UserInfo) toJSON() []byte {
 	data, _ := json.Marshal(u)
 	return data
 }

@@ -143,3 +143,21 @@ func (s *AuthService) GetUserByToken(t string) *User {
 	}
 	return nil
 }
+
+// GetUserById returns user info for specific id
+func (s *AuthService) GetUserById(id int) *UserInfo {
+	u := s.UserDao.Get(id)
+	if u == nil {
+		return nil
+	}
+	return &UserInfo{u.ID, u.Username, u.FirstName, u.LastName}
+}
+
+// GetUserById returns user info for username
+func (s *AuthService) GetUserByUsername(username string) *UserInfo {
+	u := s.UserDao.GetByUsername(username)
+	if u == nil {
+		return nil
+	}
+	return &UserInfo{u.ID, u.Username, u.FirstName, u.LastName}
+}

@@ -25,6 +25,14 @@ func (m *MockUserDao) GetByUsername(uname string) *User {
 	return provided.(*User)
 }
 
+func (m *MockUserDao) Get(id int) *User {
+	provided := m.Called(id).Get(0)
+	if provided == nil {
+		return nil
+	}
+	return provided.(*User)
+}
+
 func TestAuthService_CreateUser(t *testing.T) {
 	var u = User{-1, "uname", "test", "user", "test@email.com", "pwd"}
 

@@ -140,6 +140,36 @@ func (a *Auth) getToken(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(fmtErrorResponse("Basic Auth is missing from request")))
 }
 
+func (a *Auth) getUserByUsername(w http.ResponseWriter, r *http.Request) {
+	logger.Logf("DEBUG Request for getting user by username was accepted")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	username := chi.URLParam(r, "username")
+	user := a.AuthService.GetUserByUsername(username)
+	if user == nil {
+		w.Write([]byte(fmtErrorResponse("User is missing")))
+		return
+	}
+	w.Write(user.toJSON())
+}
+
+func (a *Auth) getUserById(w http.ResponseWriter, r *http.Request) {
+	logger.Logf("DEBUG Request for getting user by id was accepted")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	userIDStr := chi.URLParam(r, "userID")
+	userID, err := strconv.Atoi(userIDStr)
+	if err != nil {
+		logger.Logf("ERROR Cannot parse user ID: %d", userID)
+		w.Write([]byte(fmtErrorResponse(err.Error())))
+		return
+	}
+	user := a.AuthService.GetUserById(userID)
+	if user == nil {
+		w.Write([]byte(fmtErrorResponse("User is missing")))
+		return
+	}
+	w.Write(user.toJSON())
+}
+
 func (a *Auth) options(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Headers", "authorization")
@@ -152,6 +182,8 @@ func (a *Auth) start() {
 		r.Get("/users/{userID}", a.getUser)
 		r.Post("/users", a.createUser)
 		r.Post("/token", a.getToken)
+		r.Get("/userinfo/byid/{userID}", a.getUserById)
+		r.Get("/userinfo/byusername/{username}", a.getUserByUsername)
 	})
 	http.ListenAndServe(":2525", r)
 }
@@ -187,6 +219,6 @@ func main() {
 	dao := MongoUserDao{URL: conf.MongoDBURL, databaseName: conf.DatabaseName}
 	service := AuthService{UserDao: &dao, Config: conf}
 	auth := Auth{AuthService: &service}
-	logger.Logf("INFO Auth 1.0 is starting")
+	logger.Logf("INFO Auth 1.1 is starting")
 	auth.start()
 }
