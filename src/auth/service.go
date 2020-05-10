@@ -64,6 +64,10 @@ func (s *AuthService) BasicAuthToken(username, password string) (string, string,
 }
 
 func (s *AuthService) issueAccessToken(user *User) (string, error) {
+	if user == nil {
+		return "", AuthError{Msg: "User is missing", Status: 403}
+	}
+
 	keyData, _ := ioutil.ReadFile(s.Config.PrivKeyPath)
 	key, _ := jwt.ParseRSAPrivateKeyFromPEM(keyData)
 

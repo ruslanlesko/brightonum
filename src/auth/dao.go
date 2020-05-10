@@ -57,6 +57,7 @@ type MaxIDResponse struct {
 func (d *MongoUserDao) Save(u *User) int {
 	session, err := mgo.Dial(d.URL)
 	if err != nil {
+		logger.Logf("ERROR Failed to dial mongo url: '%s'", d.URL)
 		panic(err)
 	}
 	defer session.Close()
@@ -92,6 +93,7 @@ func (d *MongoUserDao) Save(u *User) int {
 func (d *MongoUserDao) GetByUsername(username string) *User {
 	session, err := mgo.Dial(d.URL)
 	if err != nil {
+		logger.Logf("ERROR Failed to dial mongo url: '%s'", d.URL)
 		panic(err)
 	}
 	defer session.Close()
@@ -114,6 +116,7 @@ func (d *MongoUserDao) GetByUsername(username string) *User {
 func (d *MongoUserDao) Get(id int) *User {
 	session, err := mgo.Dial(d.URL)
 	if err != nil {
+		logger.Logf("ERROR Failed to dial mongo url: '%s'", d.URL)
 		panic(err)
 	}
 	defer session.Close()
