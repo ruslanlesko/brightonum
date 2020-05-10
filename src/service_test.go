@@ -137,7 +137,7 @@ func createTestUser() User {
 }
 
 func createTestConfig() Config {
-	return Config{PrivKeyPath: "../../test_data/private.pem", PubKeyPath: "../../test_data/public.pem"}
+	return Config{PrivKeyPath: "../test_data/private.pem", PubKeyPath: "../test_data/public.pem"}
 }
 
 func testJWTIntField(tokenStr string, fieldName string, fieldValue int) bool {

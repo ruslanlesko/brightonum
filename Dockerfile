@@ -2,9 +2,7 @@ FROM golang:latest
 
 WORKDIR /app
 
-COPY src/auth .
-
-RUN go build -o main .
+RUN go build -o main ./src
 
 EXPOSE 2525
 
