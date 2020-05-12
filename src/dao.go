@@ -1,6 +1,10 @@
 package main
 
 import (
+	"os"
+	"os/signal"
+	"syscall"
+
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -14,7 +18,7 @@ type UserDao interface {
 
 // MemoryUserDao implementation for UserDao
 type MemoryUserDao struct {
-	Users map[int]*User
+	Users    map[int]*User
 	LatestID int
 }
 
@@ -43,34 +47,47 @@ func (d *MemoryUserDao) Get(id int) *User {
 
 // MongoUserDao provides UserDao implementation via MongoDB
 type MongoUserDao struct {
-	URL	string
+	Session      *mgo.Session
 	databaseName string
+}
+
+func NewMongoUserDao(URL string, databaseName string) *MongoUserDao {
+	session, err := mgo.Dial(URL)
+	if err != nil {
+		logger.Logf("ERROR Failed to dial mongo url: '%s'", URL)
+		panic(err)
+	}
+	logger.Logf("INFO Connected to MongoDB")
+
+	sigChan := make(chan os.Signal)
+	go func() {
+		for range sigChan {
+			logger.Logf("INFO disconnecting from MongoDB")
+			session.Close()
+			logger.Logf("INFO disconnected from MongoDB")
+		}
+	}()
+	signal.Notify(sigChan, syscall.SIGTERM)
+
+	return &MongoUserDao{Session: session, databaseName: databaseName}
 }
 
 // MaxIDResponse for response on pipe
 type MaxIDResponse struct {
-	_ID		string	`bson:"_id"`
-	MaxID	int		`bson:"MaxID"`
+	_ID   string `bson:"_id"`
+	MaxID int    `bson:"MaxID"`
 }
 
 // Save saves user in MongoDB
 func (d *MongoUserDao) Save(u *User) int {
-	session, err := mgo.Dial(d.URL)
-	if err != nil {
-		logger.Logf("ERROR Failed to dial mongo url: '%s'", d.URL)
-		panic(err)
-	}
-	defer session.Close()
-
 	result := []MaxIDResponse{}
 
-	collection := session.DB(d.databaseName).C("users")
-	err = collection.Pipe([]bson.M{
-		{"$group": 
-			bson.M{
-				"_id": nil, 
-				"MaxID": bson.M{"$max": "$id"},
-			},
+	collection := d.Session.DB(d.databaseName).C("users")
+	err := collection.Pipe([]bson.M{
+		{"$group": bson.M{
+			"_id":   nil,
+			"MaxID": bson.M{"$max": "$id"},
+		},
 		},
 	}).All(&result)
 	if err != nil {
@@ -91,19 +108,15 @@ func (d *MongoUserDao) Save(u *User) int {
 
 // GetByUsername extracts user by username
 func (d *MongoUserDao) GetByUsername(username string) *User {
-	session, err := mgo.Dial(d.URL)
-	if err != nil {
-		logger.Logf("ERROR Failed to dial mongo url: '%s'", d.URL)
-		panic(err)
-	}
-	defer session.Close()
-
 	result := []User{}
 
-	collection := session.DB(d.databaseName).C("users")
-	err = collection.Find(bson.M{
+	collection := d.Session.DB(d.databaseName).C("users")
+	err := collection.Find(bson.M{
 		"username": username,
 	}).All(&result)
+	if err != nil {
+		panic(err)
+	}
 
 	if len(result) == 0 {
 		return nil
@@ -114,19 +127,15 @@ func (d *MongoUserDao) GetByUsername(username string) *User {
 
 // Get returns user by id
 func (d *MongoUserDao) Get(id int) *User {
-	session, err := mgo.Dial(d.URL)
-	if err != nil {
-		logger.Logf("ERROR Failed to dial mongo url: '%s'", d.URL)
-		panic(err)
-	}
-	defer session.Close()
-
 	result := []User{}
 
-	collection := session.DB(d.databaseName).C("users")
-	err = collection.Find(bson.M{
+	collection := d.Session.DB(d.databaseName).C("users")
+	err := collection.Find(bson.M{
 		"id": id,
 	}).All(&result)
+	if err != nil {
+		panic(err)
+	}
 
 	if len(result) == 0 {
 		return nil

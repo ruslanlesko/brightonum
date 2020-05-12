@@ -84,7 +84,6 @@ func (a *Auth) createUser(w http.ResponseWriter, r *http.Request) {
 	}
 	err = a.AuthService.CreateUser(&newUser)
 	if err != nil {
-		logger.Logf("ERROR Cannot create user")
 		authErr, isAuthErr := err.(AuthError)
 		if isAuthErr {
 			w.WriteHeader(authErr.Status)
@@ -216,8 +215,8 @@ func main() {
 		logger = lgr.New(lgr.Debug, loggerFormat)
 	}
 
-	dao := MongoUserDao{URL: conf.MongoDBURL, databaseName: conf.DatabaseName}
-	service := AuthService{UserDao: &dao, Config: conf}
+	dao := NewMongoUserDao(conf.MongoDBURL, conf.DatabaseName)
+	service := AuthService{UserDao: dao, Config: conf}
 	auth := Auth{AuthService: &service}
 	logger.Logf("INFO BrightonUM 1.2.0 is starting")
 	auth.start()
