@@ -8,8 +8,8 @@ import (
 	"strings"
 
 	"github.com/go-chi/chi"
-	"github.com/jessevdk/go-flags"
 	"github.com/go-pkgz/lgr"
+	"github.com/jessevdk/go-flags"
 )
 
 var loggerFormat = lgr.Format(`{{.Level}} {{.DT.Format "2006-01-02 15:04:05.000"}} {{.Message}}`)
@@ -219,6 +219,6 @@ func main() {
 	dao := MongoUserDao{URL: conf.MongoDBURL, databaseName: conf.DatabaseName}
 	service := AuthService{UserDao: &dao, Config: conf}
 	auth := Auth{AuthService: &service}
-	logger.Logf("INFO BrightonUM 1.2 is starting")
+	logger.Logf("INFO BrightonUM 1.2.0 is starting")
 	auth.start()
 }
