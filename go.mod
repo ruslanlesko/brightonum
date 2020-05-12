@@ -1,4 +1,4 @@
-module ruslanlesko.com/brightonum
+module ruslanlesko/brightonum
 
 go 1.13
 

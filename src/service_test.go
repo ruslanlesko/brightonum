@@ -7,34 +7,36 @@ import (
 	"github.com/dgrijalva/jwt-go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+
+	st "ruslanlesko/brightonum/src/structs"
 )
 
 type MockUserDao struct {
 	mock.Mock
 }
 
-func (m *MockUserDao) Save(u *User) int {
+func (m *MockUserDao) Save(u *st.User) int {
 	return m.Called(u).Int(0)
 }
 
-func (m *MockUserDao) GetByUsername(uname string) *User {
+func (m *MockUserDao) GetByUsername(uname string) *st.User {
 	provided := m.Called(uname).Get(0)
 	if provided == nil {
 		return nil
 	}
-	return provided.(*User)
+	return provided.(*st.User)
 }
 
-func (m *MockUserDao) Get(id int) *User {
+func (m *MockUserDao) Get(id int) *st.User {
 	provided := m.Called(id).Get(0)
 	if provided == nil {
 		return nil
 	}
-	return provided.(*User)
+	return provided.(*st.User)
 }
 
 func TestAuthService_CreateUser(t *testing.T) {
-	var u = User{-1, "uname", "test", "user", "test@email.com", "pwd"}
+	var u = st.User{-1, "uname", "test", "user", "test@email.com", "pwd"}
 
 	dao := MockUserDao{}
 	dao.On("Save", &u).Return(1)
@@ -48,14 +50,14 @@ func TestAuthService_CreateUser(t *testing.T) {
 }
 
 func TestAuthService_CreateUser_DuplicateHandling(t *testing.T) {
-	u := User{-1, "alle", "Alle", "Alle", "alle@alle.com", "pwd"}
+	u := st.User{-1, "alle", "Alle", "Alle", "alle@alle.com", "pwd"}
 
 	dao := MockUserDao{}
 	dao.On("GetByUsername", u.Username).Return(&u)
 
 	s := AuthService{&dao, createTestConfig()}
 	err := s.CreateUser(&u)
-	assert.Equal(t, AuthError{Msg: "Username already exists", Status: 400}, err)
+	assert.Equal(t, st.AuthError{Msg: "Username already exists", Status: 400}, err)
 }
 
 func TestAuthService_BasicAuthToken(t *testing.T) {
@@ -78,17 +80,17 @@ func TestAuthService_BasicAuthToken(t *testing.T) {
 	expRaw := exctractField(accessToken, "exp", -1)
 	exp := int64(expRaw.(float64))
 	estimatedEx := time.Now().Add(time.Hour).UTC().Unix()
-	assert.True(t, exp >= estimatedEx - 1 && exp <= estimatedEx + 1)
+	assert.True(t, exp >= estimatedEx-1 && exp <= estimatedEx+1)
 
 	expRaw = exctractField(refreshToken, "exp", -1)
 	exp = int64(expRaw.(float64))
 	estimatedEx = time.Now().AddDate(1, 0, 0).UTC().Unix()
-	assert.True(t, exp >= estimatedEx - 1 && exp <= estimatedEx + 1)
+	assert.True(t, exp >= estimatedEx-1 && exp <= estimatedEx+1)
 
 	accessToken, refreshToken, err = s.BasicAuthToken(username, password+"xyz")
 	assert.Empty(t, accessToken)
 	assert.Empty(t, refreshToken)
-	assert.Equal(t, AuthError{Msg: "Username or password is wrong", Status: 403}, err)
+	assert.Equal(t, st.AuthError{Msg: "Username or password is wrong", Status: 403}, err)
 }
 
 func TestAuthService_RefreshToken(t *testing.T) {
@@ -110,7 +112,7 @@ func TestAuthService_RefreshToken(t *testing.T) {
 
 	refreshedToken, err = s.RefreshToken(refreshedToken + "xyz")
 	assert.Empty(t, refreshedToken)
-	assert.Equal(t, AuthError{Msg: "Refresh token is not valid", Status: 403}, err)
+	assert.Equal(t, st.AuthError{Msg: "Refresh token is not valid", Status: 403}, err)
 }
 
 func TestAuthService_GetUserByToken(t *testing.T) {
@@ -132,8 +134,8 @@ func TestAuthService_GetUserByToken(t *testing.T) {
 	assert.Nil(t, u)
 }
 
-func createTestUser() User {
-	return User{42, "alle", "test", "user", "test@email.com", "$2a$04$Mhlu1.a4QchlVgGQFc/0N.qAw9tsXqm1OMwjJRaPRCWn47bpsRa4S"}
+func createTestUser() st.User {
+	return st.User{42, "alle", "test", "user", "test@email.com", "$2a$04$Mhlu1.a4QchlVgGQFc/0N.qAw9tsXqm1OMwjJRaPRCWn47bpsRa4S"}
 }
 
 func createTestConfig() Config {

@@ -7,6 +7,9 @@ import (
 	"strconv"
 	"strings"
 
+	"ruslanlesko/brightonum/src/dao"
+	s "ruslanlesko/brightonum/src/structs"
+
 	"github.com/go-chi/chi"
 	"github.com/go-pkgz/lgr"
 	"github.com/jessevdk/go-flags"
@@ -65,12 +68,12 @@ func (a *Auth) getUser(w http.ResponseWriter, r *http.Request) {
 		logger.Logf("WARN Unauthorized access attempt")
 		return
 	}
-	w.Write(currentUser.toJSON())
+	w.Write(s.U2JSON(currentUser))
 }
 
 func (a *Auth) createUser(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
-	var newUser User
+	var newUser s.User
 	if r.Body == nil {
 		logger.Logf("ERROR Data is missing")
 		w.Write([]byte(fmtErrorResponse("No data")))
@@ -84,7 +87,7 @@ func (a *Auth) createUser(w http.ResponseWriter, r *http.Request) {
 	}
 	err = a.AuthService.CreateUser(&newUser)
 	if err != nil {
-		authErr, isAuthErr := err.(AuthError)
+		authErr, isAuthErr := err.(s.AuthError)
 		if isAuthErr {
 			w.WriteHeader(authErr.Status)
 		} else {
@@ -111,7 +114,7 @@ func (a *Auth) getToken(w http.ResponseWriter, r *http.Request) {
 		token, err := a.AuthService.RefreshToken(refToken)
 		if err != nil {
 			logger.Logf("WARN Cannot refresh token: %s", err.Error())
-			authErr, isAuthErr := err.(AuthError)
+			authErr, isAuthErr := err.(s.AuthError)
 			if isAuthErr {
 				w.WriteHeader(authErr.Status)
 			} else {
@@ -148,7 +151,7 @@ func (a *Auth) getUserByUsername(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(fmtErrorResponse("User is missing")))
 		return
 	}
-	w.Write(user.toJSON())
+	w.Write(s.UI2JSON(user))
 }
 
 func (a *Auth) getUserById(w http.ResponseWriter, r *http.Request) {
@@ -166,7 +169,7 @@ func (a *Auth) getUserById(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(fmtErrorResponse("User is missing")))
 		return
 	}
-	w.Write(user.toJSON())
+	w.Write(s.UI2JSON(user))
 }
 
 func (a *Auth) options(w http.ResponseWriter, r *http.Request) {
@@ -215,7 +218,7 @@ func main() {
 		logger = lgr.New(lgr.Debug, loggerFormat)
 	}
 
-	dao := NewMongoUserDao(conf.MongoDBURL, conf.DatabaseName)
+	dao := dao.NewMongoUserDao(conf.MongoDBURL, conf.DatabaseName)
 	service := AuthService{UserDao: dao, Config: conf}
 	auth := Auth{AuthService: &service}
 	logger.Logf("INFO BrightonUM 1.2.1 is starting")

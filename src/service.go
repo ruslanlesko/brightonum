@@ -1,30 +1,35 @@
 package main
 
 import (
-	"io/ioutil"
-	"github.com/dgrijalva/jwt-go"
-	"time"
 	"fmt"
+	"io/ioutil"
+	"ruslanlesko/brightonum/src/crypto"
+	"ruslanlesko/brightonum/src/dao"
+	st "ruslanlesko/brightonum/src/structs"
+
+	"time"
+
+	"github.com/dgrijalva/jwt-go"
 )
 
 // AuthService provides all auth operations
 type AuthService struct {
-	UserDao UserDao
-	Config Config
+	UserDao dao.UserDao
+	Config  Config
 }
 
 // CreateUser creates new User
-func (s *AuthService) CreateUser(u *User) error {
+func (s *AuthService) CreateUser(u *st.User) error {
 	logger.Logf("DEBUG creating user")
 
 	uname := u.Username
 
 	if s.usernameExists(uname) {
 		logger.Logf("WARN Username %s already exists", uname)
-		return AuthError{Msg: "Username already exists", Status: 400}
+		return st.AuthError{Msg: "Username already exists", Status: 400}
 	}
 
-	hashedPassword, err := Hash(u.Password)
+	hashedPassword, err := crypto.Hash(u.Password)
 	if err != nil {
 		logger.Logf("ERROR Failed to hash password, %s", err.Error())
 		return err
@@ -46,8 +51,8 @@ func (s *AuthService) usernameExists(username string) bool {
 func (s *AuthService) BasicAuthToken(username, password string) (string, string, error) {
 	user := s.UserDao.GetByUsername(username)
 
-	if user == nil || !Match(password, user.Password) {
-		return "", "", AuthError{Msg: "Username or password is wrong", Status: 403}
+	if user == nil || !crypto.Match(password, user.Password) {
+		return "", "", st.AuthError{Msg: "Username or password is wrong", Status: 403}
 	}
 
 	tokenString, err := s.issueAccessToken(user)
@@ -63,18 +68,18 @@ func (s *AuthService) BasicAuthToken(username, password string) (string, string,
 	return tokenString, refreshTokenString, nil
 }
 
-func (s *AuthService) issueAccessToken(user *User) (string, error) {
+func (s *AuthService) issueAccessToken(user *st.User) (string, error) {
 	if user == nil {
-		return "", AuthError{Msg: "User is missing", Status: 403}
+		return "", st.AuthError{Msg: "User is missing", Status: 403}
 	}
 
 	keyData, _ := ioutil.ReadFile(s.Config.PrivKeyPath)
 	key, _ := jwt.ParseRSAPrivateKeyFromPEM(keyData)
 
 	token := jwt.NewWithClaims(jwt.SigningMethodRS256, jwt.MapClaims{
-		"sub": user.Username,
+		"sub":    user.Username,
 		"userId": user.ID,
-		"exp": time.Now().Add(time.Hour).UTC().Unix(),
+		"exp":    time.Now().Add(time.Hour).UTC().Unix(),
 	})
 
 	tokenString, err := token.SignedString(key)
@@ -85,7 +90,7 @@ func (s *AuthService) issueAccessToken(user *User) (string, error) {
 	return tokenString, nil
 }
 
-func (s *AuthService) issueRefreshToken(user *User) (string, error) {
+func (s *AuthService) issueRefreshToken(user *st.User) (string, error) {
 	keyData, _ := ioutil.ReadFile(s.Config.PrivKeyPath)
 	key, _ := jwt.ParseRSAPrivateKeyFromPEM(keyData)
 
@@ -109,10 +114,10 @@ func (s *AuthService) RefreshToken(t string) (string, error) {
 		accessToken, err := s.issueAccessToken(u)
 		return accessToken, err
 	}
-	return "", AuthError{Msg: "Refresh token is not valid", Status: 403}
+	return "", st.AuthError{Msg: "Refresh token is not valid", Status: 403}
 }
 
-func (s *AuthService) validateRefreshToken(t string) (*User, bool) {
+func (s *AuthService) validateRefreshToken(t string) (*st.User, bool) {
 	keyData, _ := ioutil.ReadFile(s.Config.PubKeyPath)
 	key, _ := jwt.ParseRSAPublicKeyFromPEM(keyData)
 
@@ -122,7 +127,7 @@ func (s *AuthService) validateRefreshToken(t string) (*User, bool) {
 		}
 		return key, nil
 	})
-	
+
 	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
 		u := s.UserDao.GetByUsername(fmt.Sprintf("%s", claims["sub"]))
 		return u, true
@@ -131,7 +136,7 @@ func (s *AuthService) validateRefreshToken(t string) (*User, bool) {
 }
 
 // GetUserByToken returns user by token
-func (s *AuthService) GetUserByToken(t string) *User {
+func (s *AuthService) GetUserByToken(t string) *st.User {
 	keyData, _ := ioutil.ReadFile(s.Config.PubKeyPath)
 	key, _ := jwt.ParseRSAPublicKeyFromPEM(keyData)
 
@@ -141,7 +146,7 @@ func (s *AuthService) GetUserByToken(t string) *User {
 		}
 		return key, nil
 	})
-	
+
 	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
 		return s.UserDao.GetByUsername(fmt.Sprintf("%s", claims["sub"]))
 	}
@@ -149,19 +154,19 @@ func (s *AuthService) GetUserByToken(t string) *User {
 }
 
 // GetUserById returns user info for specific id
-func (s *AuthService) GetUserById(id int) *UserInfo {
+func (s *AuthService) GetUserById(id int) *st.UserInfo {
 	u := s.UserDao.Get(id)
 	if u == nil {
 		return nil
 	}
-	return &UserInfo{u.ID, u.Username, u.FirstName, u.LastName}
+	return &st.UserInfo{u.ID, u.Username, u.FirstName, u.LastName}
 }
 
 // GetUserById returns user info for username
-func (s *AuthService) GetUserByUsername(username string) *UserInfo {
+func (s *AuthService) GetUserByUsername(username string) *st.UserInfo {
 	u := s.UserDao.GetByUsername(username)
 	if u == nil {
 		return nil
 	}
-	return &UserInfo{u.ID, u.Username, u.FirstName, u.LastName}
+	return &st.UserInfo{u.ID, u.Username, u.FirstName, u.LastName}
 }

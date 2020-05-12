@@ -9,15 +9,17 @@ import (
 	"strconv"
 	"testing"
 
+	s "ruslanlesko/brightonum/src/structs"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
 
 const baseURL string = "http://localhost:2525/"
 
-var user = User{42, "alle", "test", "user", "test@email.com", "$2a$04$Mhlu1.a4QchlVgGQFc/0N.qAw9tsXqm1OMwjJRaPRCWn47bpsRa4S"}
-var user2 = User{-1, "sarah", "Sarah", "Lynn", "sarah@email.com", "oakheart"}
-var userInfo = UserInfo{42, "alle", "test", "user"}
+var user = s.User{42, "alle", "test", "user", "test@email.com", "$2a$04$Mhlu1.a4QchlVgGQFc/0N.qAw9tsXqm1OMwjJRaPRCWn47bpsRa4S"}
+var user2 = s.User{-1, "sarah", "Sarah", "Lynn", "sarah@email.com", "oakheart"}
+var userInfo = s.UserInfo{42, "alle", "test", "user"}
 
 func TestMain(m *testing.M) {
 	setup()
@@ -37,7 +39,7 @@ func TestFunctional_GetByUsername(t *testing.T) {
 
 	defer resp.Body.Close()
 
-	var resultUserInfo UserInfo
+	var resultUserInfo s.UserInfo
 	json.NewDecoder(resp.Body).Decode(&resultUserInfo)
 	assert.Equal(t, userInfo, resultUserInfo)
 }
@@ -48,18 +50,18 @@ func TestFunctional_GetById(t *testing.T) {
 
 	defer resp.Body.Close()
 
-	var resultUserInfo UserInfo
+	var resultUserInfo s.UserInfo
 	json.NewDecoder(resp.Body).Decode(&resultUserInfo)
 	assert.Equal(t, userInfo, resultUserInfo)
 }
 
 func TestFunctional_CreateUser(t *testing.T) {
-	resp, err := http.Post(baseURL+"v1/users", "application/json", bytes.NewReader(user.toJSON()))
+	resp, err := http.Post(baseURL+"v1/users", "application/json", bytes.NewReader(s.U2JSON(&user)))
 	assert.Nil(t, err)
 
 	assert.Equal(t, 400, resp.StatusCode)
 
-	resp, err = http.Post(baseURL+"v1/users", "application/json", bytes.NewReader(user2.toJSON()))
+	resp, err = http.Post(baseURL+"v1/users", "application/json", bytes.NewReader(s.U2JSON(&user2)))
 	assert.Nil(t, err)
 
 	defer resp.Body.Close()
@@ -105,7 +107,7 @@ func setup() {
 	dao.On("GetByUsername", user2.Username).Return(nil)
 	dao.On("Get", user.ID).Return(&user)
 	dao.On("Save", mock.MatchedBy(
-		func(u *User) bool {
+		func(u *s.User) bool {
 			return u.Username == user2.Username && u.FirstName == user2.FirstName && u.LastName == user2.LastName
 		})).Return(43)
 
