@@ -43,13 +43,13 @@ func (s *AuthService) CreateUser(u *st.User) error {
 }
 
 func (s *AuthService) usernameExists(username string) bool {
-	u := s.UserDao.GetByUsername(username)
+	u, _ := s.UserDao.GetByUsername(username)
 	return u != nil
 }
 
 // BasicAuthToken issues new token by username and password
 func (s *AuthService) BasicAuthToken(username, password string) (string, string, error) {
-	user := s.UserDao.GetByUsername(username)
+	user, _ := s.UserDao.GetByUsername(username)
 
 	if user == nil || !crypto.Match(password, user.Password) {
 		return "", "", st.AuthError{Msg: "Username or password is wrong", Status: 403}
@@ -129,7 +129,7 @@ func (s *AuthService) validateRefreshToken(t string) (*st.User, bool) {
 	})
 
 	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
-		u := s.UserDao.GetByUsername(fmt.Sprintf("%s", claims["sub"]))
+		u, _ := s.UserDao.GetByUsername(fmt.Sprintf("%s", claims["sub"]))
 		return u, true
 	}
 	return nil, false
@@ -148,14 +148,15 @@ func (s *AuthService) GetUserByToken(t string) *st.User {
 	})
 
 	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
-		return s.UserDao.GetByUsername(fmt.Sprintf("%s", claims["sub"]))
+		u, _ := s.UserDao.GetByUsername(fmt.Sprintf("%s", claims["sub"]))
+		return u
 	}
 	return nil
 }
 
 // GetUserById returns user info for specific id
 func (s *AuthService) GetUserById(id int) *st.UserInfo {
-	u := s.UserDao.Get(id)
+	u, _ := s.UserDao.Get(id)
 	if u == nil {
 		return nil
 	}
@@ -164,7 +165,7 @@ func (s *AuthService) GetUserById(id int) *st.UserInfo {
 
 // GetUserById returns user info for username
 func (s *AuthService) GetUserByUsername(username string) *st.UserInfo {
-	u := s.UserDao.GetByUsername(username)
+	u, _ := s.UserDao.GetByUsername(username)
 	if u == nil {
 		return nil
 	}

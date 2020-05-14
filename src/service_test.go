@@ -6,41 +6,17 @@ import (
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 
+	"ruslanlesko/brightonum/src/dao"
 	st "ruslanlesko/brightonum/src/structs"
 )
-
-type MockUserDao struct {
-	mock.Mock
-}
-
-func (m *MockUserDao) Save(u *st.User) int {
-	return m.Called(u).Int(0)
-}
-
-func (m *MockUserDao) GetByUsername(uname string) *st.User {
-	provided := m.Called(uname).Get(0)
-	if provided == nil {
-		return nil
-	}
-	return provided.(*st.User)
-}
-
-func (m *MockUserDao) Get(id int) *st.User {
-	provided := m.Called(id).Get(0)
-	if provided == nil {
-		return nil
-	}
-	return provided.(*st.User)
-}
 
 func TestAuthService_CreateUser(t *testing.T) {
 	var u = st.User{-1, "uname", "test", "user", "test@email.com", "pwd"}
 
-	dao := MockUserDao{}
+	dao := dao.MockUserDao{}
 	dao.On("Save", &u).Return(1)
-	dao.On("GetByUsername", u.Username).Return(nil)
+	dao.On("GetByUsername", u.Username).Return(nil, nil)
 
 	s := AuthService{&dao, createTestConfig()}
 	err := s.CreateUser(&u)
@@ -52,8 +28,8 @@ func TestAuthService_CreateUser(t *testing.T) {
 func TestAuthService_CreateUser_DuplicateHandling(t *testing.T) {
 	u := st.User{-1, "alle", "Alle", "Alle", "alle@alle.com", "pwd"}
 
-	dao := MockUserDao{}
-	dao.On("GetByUsername", u.Username).Return(&u)
+	dao := dao.MockUserDao{}
+	dao.On("GetByUsername", u.Username).Return(&u, nil)
 
 	s := AuthService{&dao, createTestConfig()}
 	err := s.CreateUser(&u)
@@ -65,8 +41,8 @@ func TestAuthService_BasicAuthToken(t *testing.T) {
 	username := user.Username
 	password := "oakheart"
 
-	dao := MockUserDao{}
-	dao.On("GetByUsername", username).Return(&user)
+	dao := dao.MockUserDao{}
+	dao.On("GetByUsername", username).Return(&user, nil)
 
 	s := AuthService{&dao, createTestConfig()}
 	accessToken, refreshToken, err := s.BasicAuthToken(username, password)
@@ -98,8 +74,8 @@ func TestAuthService_RefreshToken(t *testing.T) {
 	username := user.Username
 	password := "oakheart"
 
-	dao := MockUserDao{}
-	dao.On("GetByUsername", username).Return(&user)
+	dao := dao.MockUserDao{}
+	dao.On("GetByUsername", username).Return(&user, nil)
 
 	s := AuthService{&dao, createTestConfig()}
 	accessToken, refreshToken, err := s.BasicAuthToken(username, password)
@@ -120,8 +96,8 @@ func TestAuthService_GetUserByToken(t *testing.T) {
 	username := user.Username
 	password := "oakheart"
 
-	dao := MockUserDao{}
-	dao.On("GetByUsername", username).Return(&user)
+	dao := dao.MockUserDao{}
+	dao.On("GetByUsername", username).Return(&user, nil)
 
 	s := AuthService{&dao, createTestConfig()}
 	token, _, err := s.BasicAuthToken(username, password)

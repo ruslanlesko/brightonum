@@ -221,6 +221,6 @@ func main() {
 	dao := dao.NewMongoUserDao(conf.MongoDBURL, conf.DatabaseName)
 	service := AuthService{UserDao: dao, Config: conf}
 	auth := Auth{AuthService: &service}
-	logger.Logf("INFO BrightonUM 1.2.1 is starting")
+	logger.Logf("INFO BrightonUM 1.3.0 is starting")
 	auth.start()
 }

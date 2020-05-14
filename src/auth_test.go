@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"testing"
 
+	"ruslanlesko/brightonum/src/dao"
 	s "ruslanlesko/brightonum/src/structs"
 
 	"github.com/stretchr/testify/assert"
@@ -102,10 +103,10 @@ func TestFunctional_Token(t *testing.T) {
 }
 
 func setup() {
-	dao := MockUserDao{}
-	dao.On("GetByUsername", user.Username).Return(&user)
-	dao.On("GetByUsername", user2.Username).Return(nil)
-	dao.On("Get", user.ID).Return(&user)
+	dao := dao.MockUserDao{}
+	dao.On("GetByUsername", user.Username).Return(&user, nil)
+	dao.On("GetByUsername", user2.Username).Return(nil, nil)
+	dao.On("Get", user.ID).Return(&user, nil)
 	dao.On("Save", mock.MatchedBy(
 		func(u *s.User) bool {
 			return u.Username == user2.Username && u.FirstName == user2.FirstName && u.LastName == user2.LastName
