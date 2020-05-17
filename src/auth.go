@@ -50,7 +50,7 @@ func (a *Auth) getUser(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
-	currentUser := a.AuthService.GetUserByToken(strings.Split(header, " ")[1])
+	currentUser, _ := a.AuthService.GetUserByToken(strings.Split(header, " ")[1])
 	if currentUser == nil {
 		logger.Logf("ERROR Token is invalid")
 		w.WriteHeader(http.StatusUnauthorized)
@@ -146,7 +146,7 @@ func (a *Auth) getUserByUsername(w http.ResponseWriter, r *http.Request) {
 	logger.Logf("DEBUG Request for getting user by username was accepted")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	username := chi.URLParam(r, "username")
-	user := a.AuthService.GetUserByUsername(username)
+	user, _ := a.AuthService.GetUserByUsername(username)
 	if user == nil {
 		w.Write([]byte(fmtErrorResponse("User is missing")))
 		return
@@ -164,7 +164,7 @@ func (a *Auth) getUserById(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(fmtErrorResponse(err.Error())))
 		return
 	}
-	user := a.AuthService.GetUserById(userID)
+	user, _ := a.AuthService.GetUserById(userID)
 	if user == nil {
 		w.Write([]byte(fmtErrorResponse("User is missing")))
 		return

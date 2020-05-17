@@ -103,10 +103,12 @@ func TestAuthService_GetUserByToken(t *testing.T) {
 	token, _, err := s.BasicAuthToken(username, password)
 	assert.Nil(t, err)
 
-	u := s.GetUserByToken(token)
+	u, err := s.GetUserByToken(token)
+	assert.Nil(t, err)
 	assert.Equal(t, user, *u)
 
-	u = s.GetUserByToken(token + "xyz")
+	u, err = s.GetUserByToken(token + "xyz")
+	assert.NotNil(t, err)
 	assert.Nil(t, u)
 }
 
