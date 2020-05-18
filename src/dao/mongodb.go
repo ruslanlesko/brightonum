@@ -54,6 +54,7 @@ func NewMongoUserDao(URL string, databaseName string) *MongoUserDao {
 // Implemented to retry insertion several times if another thread inserts document between
 // calculation of new id and insertion into collection.
 func (d *MongoUserDao) Save(u *s.User) int {
+	u.Username = strings.ToLower(u.Username)
 	return d.doSave(u, 5)
 }
 
@@ -119,7 +120,7 @@ func (d *MongoUserDao) GetByUsername(username string) (*s.User, error) {
 
 	collection := session.DB(d.DatabaseName).C(collectionName)
 	err := collection.Find(bson.M{
-		"username": username,
+		"username": strings.ToLower(username),
 	}).All(&result)
 	if err != nil {
 		logger.Logf("ERROR %s", err)

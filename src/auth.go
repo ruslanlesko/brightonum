@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -41,73 +40,46 @@ type Config struct {
 	Debug bool `long:"debug" required:"false" description:"Enable debug logging"`
 }
 
-func (a *Auth) getUser(w http.ResponseWriter, r *http.Request) {
-	header := r.Header.Get("Authorization")
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Access-Control-Allow-Headers", "authorization")
-	if header == "" {
-		logger.Logf("ERROR Token is missing")
-		w.WriteHeader(http.StatusUnauthorized)
-		return
-	}
-	currentUser, _ := a.AuthService.GetUserByToken(strings.Split(header, " ")[1])
-	if currentUser == nil {
-		logger.Logf("ERROR Token is invalid")
-		w.WriteHeader(http.StatusUnauthorized)
-		return
-	}
-	userIDStr := chi.URLParam(r, "userID")
-	userID, err := strconv.Atoi(userIDStr)
-	if err != nil {
-		logger.Logf("ERROR Cannot parse user ID: %d", userID)
-		w.Write([]byte(fmtErrorResponse(err.Error())))
-		return
-	}
-	if currentUser.ID != userID {
-		w.WriteHeader(http.StatusUnauthorized)
-		logger.Logf("WARN Unauthorized access attempt")
-		return
-	}
-	w.Write(s.U2JSON(currentUser))
-}
-
 func (a *Auth) createUser(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	var newUser s.User
+	logger.Logf("INFO POST /v1/users request accepted")
+	a.options(w, r)
+	w.Header().Add("Content-type", "application/json; charset=utf-8")
+
 	if r.Body == nil {
 		logger.Logf("ERROR Data is missing")
-		w.Write([]byte(fmtErrorResponse("No data")))
+		writeError(w, s.AuthError{Msg: "Request body is missing", Status: 400})
 		return
 	}
+
+	var newUser s.User
+
 	err := json.NewDecoder(r.Body).Decode(&newUser)
 	if err != nil {
 		logger.Logf("ERROR Cannot decode JSON payload")
-		w.Write([]byte(fmtErrorResponse(err.Error())))
+		writeError(w, s.AuthError{Msg: err.Error(), Status: 400})
 		return
 	}
 	err = a.AuthService.CreateUser(&newUser)
 	if err != nil {
 		authErr, isAuthErr := err.(s.AuthError)
 		if isAuthErr {
-			w.WriteHeader(authErr.Status)
+			writeError(w, authErr)
 		} else {
-			w.WriteHeader(500)
+			writeError(w, s.AuthError{Msg: err.Error(), Status: 500})
 		}
-		w.Write([]byte(fmtErrorResponse(err.Error())))
 		return
 	}
 
-	newID := newUser.ID
-	response := fmt.Sprintf("{\"id\": %d}", newID)
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Write([]byte(response))
+	w.WriteHeader(201)
+	w.Write(s.ID2JSON(&s.IDResp{ID: newUser.ID}))
 }
 
 func (a *Auth) getToken(w http.ResponseWriter, r *http.Request) {
-	logger.Logf("DEBUG Request for issuing a token was accepted")
+	logger.Logf("INFO POST /v1/token request accepted")
+	a.options(w, r)
+	w.Header().Add("Content-type", "application/json; charset=utf-8")
+
 	t := r.URL.Query().Get("type")
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Access-Control-Allow-Headers", "authorization")
 	if t == "refresh_token" {
 		logger.Logf("INFO Refreshing token")
 		refToken := strings.Split(r.Header.Get("Authorization"), " ")[1]
@@ -116,13 +88,12 @@ func (a *Auth) getToken(w http.ResponseWriter, r *http.Request) {
 			logger.Logf("WARN Cannot refresh token: %s", err.Error())
 			authErr, isAuthErr := err.(s.AuthError)
 			if isAuthErr {
-				w.WriteHeader(authErr.Status)
+				writeError(w, authErr)
 			} else {
-				w.WriteHeader(500)
+				writeError(w, s.AuthError{Msg: err.Error(), Status: 500})
 			}
-			w.Write([]byte(fmtErrorResponse(err.Error())))
 		} else {
-			w.Write([]byte(fmtAccTokenResponse(token)))
+			w.Write(s.AR2JSON(&s.AccessTokenResp{AccessToken: token}))
 		}
 		return
 	}
@@ -131,42 +102,53 @@ func (a *Auth) getToken(w http.ResponseWriter, r *http.Request) {
 		accessToken, refreshToken, err := a.AuthService.BasicAuthToken(u, p)
 		if err != nil {
 			logger.Logf("WARN Cannot issue token: %s", err.Error())
-			w.WriteHeader(400)
-			w.Write([]byte(fmtErrorResponse(err.Error())))
+			writeError(w, err.(s.AuthError))
 		} else {
-			w.Write([]byte(fmtAccRefTokenResponse(accessToken, refreshToken)))
+			w.Write(s.ARR2JSON(&s.AccessAndRefreshTokenResp{AccessToken: accessToken, RefreshToken: refreshToken}))
 		}
 		return
 	}
 	logger.Logf("ERROR Basic Auth is missing")
-	w.Write([]byte(fmtErrorResponse("Basic Auth is missing from request")))
+	writeError(w, s.AuthError{Msg: "Basic Auth token is missing", Status: 400})
 }
 
 func (a *Auth) getUserByUsername(w http.ResponseWriter, r *http.Request) {
-	logger.Logf("DEBUG Request for getting user by username was accepted")
-	w.Header().Set("Access-Control-Allow-Origin", "*")
+	logger.Logf("INFO GET /v1/userinfo/byusername request accepted")
+	a.options(w, r)
+	w.Header().Add("Content-type", "application/json; charset=utf-8")
+
 	username := chi.URLParam(r, "username")
-	user, _ := a.AuthService.GetUserByUsername(username)
+	user, err := a.AuthService.GetUserByUsername(username)
+	if err != nil {
+		writeError(w, err.(s.AuthError))
+		return
+	}
 	if user == nil {
-		w.Write([]byte(fmtErrorResponse("User is missing")))
+		writeError(w, s.AuthError{Msg: "User is missing", Status: 404})
 		return
 	}
 	w.Write(s.UI2JSON(user))
 }
 
 func (a *Auth) getUserById(w http.ResponseWriter, r *http.Request) {
-	logger.Logf("DEBUG Request for getting user by id was accepted")
-	w.Header().Set("Access-Control-Allow-Origin", "*")
+	logger.Logf("INFO GET /v1/userinfo/byid request accepted")
+	a.options(w, r)
+	w.Header().Add("Content-type", "application/json; charset=utf-8")
+
 	userIDStr := chi.URLParam(r, "userID")
 	userID, err := strconv.Atoi(userIDStr)
 	if err != nil {
 		logger.Logf("ERROR Cannot parse user ID: %d", userID)
-		w.Write([]byte(fmtErrorResponse(err.Error())))
+		writeError(w, s.AuthError{Msg: "Cannot parse user ID", Status: 400})
 		return
 	}
-	user, _ := a.AuthService.GetUserById(userID)
+	user, err := a.AuthService.GetUserById(userID)
+	if err != nil {
+		writeError(w, err.(s.AuthError))
+		return
+	}
 	if user == nil {
-		w.Write([]byte(fmtErrorResponse("User is missing")))
+		writeError(w, s.AuthError{Msg: "User is missing", Status: 404})
 		return
 	}
 	w.Write(s.UI2JSON(user))
@@ -177,32 +159,21 @@ func (a *Auth) options(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Headers", "authorization")
 }
 
+func writeError(w http.ResponseWriter, err s.AuthError) {
+	w.WriteHeader(err.Status)
+	w.Write(s.ER2JSON(&s.ErrorResp{Error: err.Error()}))
+}
+
 func (a *Auth) start() {
 	r := chi.NewRouter()
 	r.Route("/v1", func(r chi.Router) {
 		r.Options("/*", a.options)
-		r.Get("/users/{userID}", a.getUser)
 		r.Post("/users", a.createUser)
 		r.Post("/token", a.getToken)
 		r.Get("/userinfo/byid/{userID}", a.getUserById)
 		r.Get("/userinfo/byusername/{username}", a.getUserByUsername)
 	})
 	http.ListenAndServe(":2525", r)
-}
-
-// Formats access and refresh token to JSON response
-func fmtAccRefTokenResponse(accessToken, refreshToken string) string {
-	return fmt.Sprintf("{\"accessToken\":\"%s\",\"refreshToken\":\"%s\"}", accessToken, refreshToken)
-}
-
-// Formats access token to JSON response
-func fmtAccTokenResponse(accessToken string) string {
-	return fmt.Sprintf("{\"accessToken\":\"%s\"}", accessToken)
-}
-
-// Formats error response to JSON
-func fmtErrorResponse(err string) string {
-	return fmt.Sprintf("{\"error\":\"%s\"}", err)
 }
 
 func main() {

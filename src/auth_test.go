@@ -65,6 +65,8 @@ func TestFunctional_CreateUser(t *testing.T) {
 	resp, err = http.Post(baseURL+"v1/users", "application/json", bytes.NewReader(s.U2JSON(&user2)))
 	assert.Nil(t, err)
 
+	assert.Equal(t, 201, resp.StatusCode)
+
 	defer resp.Body.Close()
 
 	body, err := ioutil.ReadAll(resp.Body)
