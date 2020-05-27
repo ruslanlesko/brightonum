@@ -1,3 +1,4 @@
+![BrightonUM logo](https://github.com/ruslanlesko/brightonum/raw/master/logo/main.png)
 # BrightonUM - simple authentication and user management system
 Created by [Ruslan Lesko](https://leskor.com)
 
