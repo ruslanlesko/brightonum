@@ -156,3 +156,19 @@ func (d *MongoUserDao) Get(id int) (*s.User, error) {
 
 	return &result[0], nil
 }
+
+func (d *MongoUserDao) GetAll() (*[]s.User, error) {
+	result := []s.User{}
+
+	session := d.Session.Clone()
+	defer session.Close()
+
+	collection := session.DB(d.DatabaseName).C(collectionName)
+	err := collection.Find(bson.M{}).All(&result)
+	if err != nil {
+		logger.Logf("ERROR %s", err)
+		return nil, err
+	}
+
+	return &result, nil
+}

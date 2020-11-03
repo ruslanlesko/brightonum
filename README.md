@@ -9,6 +9,7 @@ Port number: 2525
 
 * GET `/v1/userinfo/byid/{userId}` Returns user info by id
 * GET `/v1/userinfo/byusername/{username}` Returns user info by username
+* GET `/v1/userinfo` Returns list of all users info
 * POST `/v1/users` Creates user from JSON payload. Required string fields: username, firstName, lastName, email, password
 * POST `/v1/token` Issues a token using basic auth. Returns JSON with 2 fields: accessToken and refreshToken
 * POST `/v1/token?type=refresh_token` Issues an access token using refresh token (bearer)

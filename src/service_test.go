@@ -112,8 +112,37 @@ func TestAuthService_GetUserByToken(t *testing.T) {
 	assert.Nil(t, u)
 }
 
+func TestAuthService_GetUsers(t *testing.T) {
+	user1 := createTestUser()
+	user2 := createAnotherTestUser()
+
+	dao := dao.MockUserDao{}
+	dao.On("GetAll").Return(&[]st.User{user1, user2}, nil)
+
+	s := AuthService{&dao, createTestConfig()}
+
+	userInfo := createTestUserInfo()
+	userInfo2 := createAdditionalTestUserInfo()
+	expected := &[]st.UserInfo{userInfo, userInfo2}
+	us, err := s.GetUsers()
+	assert.Nil(t, err)
+	assert.Equal(t, expected, us)
+}
+
 func createTestUser() st.User {
 	return st.User{42, "alle", "test", "user", "test@email.com", "$2a$04$Mhlu1.a4QchlVgGQFc/0N.qAw9tsXqm1OMwjJRaPRCWn47bpsRa4S"}
+}
+
+func createTestUserInfo() st.UserInfo {
+	return st.UserInfo{42, "alle", "test", "user"}
+}
+
+func createAnotherTestUser() st.User {
+	return st.User{43, "alle2", "test", "user", "test@email.com", "$2a$04$Mhlu1.a4QchlVgGQFc/0N.qAw9tsXqm1OMwjJRaPRCWn47bpsRa4S"}
+}
+
+func createAdditionalTestUserInfo() st.UserInfo {
+	return st.UserInfo{43, "alle2", "test", "user"}
 }
 
 func createTestConfig() Config {

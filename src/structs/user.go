@@ -31,3 +31,8 @@ func UI2JSON(u *UserInfo) []byte {
 	data, _ := json.Marshal(u)
 	return data
 }
+
+func UL2JSON(us *[]UserInfo) []byte {
+	data, _ := json.Marshal(us)
+	return data
+}

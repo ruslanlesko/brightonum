@@ -112,6 +112,19 @@ func (a *Auth) getToken(w http.ResponseWriter, r *http.Request) {
 	writeError(w, s.AuthError{Msg: "Basic Auth token is missing", Status: 400})
 }
 
+func (a *Auth) getUsers(w http.ResponseWriter, r *http.Request) {
+	logger.Logf("INFO GET /v1/userinfo request accepted")
+	a.options(w, r)
+	w.Header().Add("Content-type", "application/json; charset=utf-8")
+
+	users, err := a.AuthService.GetUsers()
+	if err != nil {
+		writeError(w, err.(s.AuthError))
+		return
+	}
+	w.Write(s.UL2JSON(users))
+}
+
 func (a *Auth) getUserByUsername(w http.ResponseWriter, r *http.Request) {
 	logger.Logf("INFO GET /v1/userinfo/byusername request accepted")
 	a.options(w, r)
@@ -172,6 +185,7 @@ func (a *Auth) start() {
 		r.Post("/token", a.getToken)
 		r.Get("/userinfo/byid/{userID}", a.getUserById)
 		r.Get("/userinfo/byusername/{username}", a.getUserByUsername)
+		r.Get("/userinfo", a.getUsers)
 	})
 	http.ListenAndServe(":2525", r)
 }
@@ -192,6 +206,6 @@ func main() {
 	dao := dao.NewMongoUserDao(conf.MongoDBURL, conf.DatabaseName)
 	service := AuthService{UserDao: dao, Config: conf}
 	auth := Auth{AuthService: &service}
-	logger.Logf("INFO BrightonUM 1.3.0 is starting")
+	logger.Logf("INFO BrightonUM 1.4.0 is starting")
 	auth.start()
 }

@@ -16,4 +16,7 @@ type UserDao interface {
 	// Get returns nil when user is not found
 	// Returns error is data access error occured
 	Get(int) (*structs.User, error)
+
+	// GetAll returns all users or empty list
+	GetAll() (*[]structs.User, error)
 }

@@ -40,3 +40,16 @@ func (m *MockUserDao) Get(id int) (*structs.User, error) {
 	}
 	return provided.(*structs.User), castedErr
 }
+
+func (m *MockUserDao) GetAll() (*[]structs.User, error) {
+	provided := m.Called().Get(0)
+	err := m.Called().Get(1)
+	var castedErr error = nil
+	if err != nil {
+		castedErr = err.(error)
+	}
+	if provided == nil {
+		return nil, castedErr
+	}
+	return provided.(*[]structs.User), castedErr
+}

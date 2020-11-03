@@ -223,5 +223,26 @@ func (s *AuthService) GetUserByUsername(username string) (*st.UserInfo, error) {
 	if u == nil {
 		return nil, nil
 	}
-	return &st.UserInfo{ID: u.ID, Username: u.Username, FirstName: u.FirstName, LastName: u.LastName}, nil
+	return mapToUserInfo(u), nil
+}
+
+// GetUsers returns all users info
+func (s *AuthService) GetUsers() (*[]st.UserInfo, error) {
+	us, err := s.UserDao.GetAll()
+	if err != nil {
+		return nil, st.AuthError{Msg: err.Error(), Status: 500}
+	}
+	return mapToUserInfoList(us), nil
+}
+
+func mapToUserInfoList(us *[]st.User) *[]st.UserInfo {
+	result := []st.UserInfo{}
+	for _, u := range *us {
+		result = append(result, *mapToUserInfo(&u))
+	}
+	return &result
+}
+
+func mapToUserInfo(u *st.User) *st.UserInfo {
+	return &st.UserInfo{ID: u.ID, Username: u.Username, FirstName: u.FirstName, LastName: u.LastName}
 }
