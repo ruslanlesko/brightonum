@@ -74,6 +74,61 @@ func (a *Auth) createUser(w http.ResponseWriter, r *http.Request) {
 	w.Write(s.ID2JSON(&s.IDResp{ID: newUser.ID}))
 }
 
+func (a *Auth) updateUser(w http.ResponseWriter, r *http.Request) {
+	logger.Logf("INFO PATCH /v1/users request accepted")
+	a.options(w, r)
+	w.Header().Add("Content-type", "application/json; charset=utf-8")
+
+	authHeader := r.Header.Get("Authorization")
+	headerItems := strings.Split(authHeader, " ")
+
+	if len(headerItems) < 2 {
+		writeError(w, s.AuthError{Msg: "Authorization header is missing or invalid", Status: 401})
+		return
+	}
+
+	token := headerItems[1]
+
+	if r.Body == nil {
+		logger.Logf("ERROR Data is missing")
+		writeError(w, s.AuthError{Msg: "Request body is missing", Status: 400})
+		return
+	}
+
+	userIDStr := chi.URLParam(r, "userID")
+	userID, err := strconv.Atoi(userIDStr)
+	if err != nil {
+		logger.Logf("ERROR Cannot parse user ID: %d", userID)
+		writeError(w, s.AuthError{Msg: "Cannot parse user ID", Status: 400})
+		return
+	}
+
+	var updatedUser s.User
+
+	err = json.NewDecoder(r.Body).Decode(&updatedUser)
+	if err != nil {
+		logger.Logf("ERROR Cannot decode JSON payload")
+		writeError(w, s.AuthError{Msg: err.Error(), Status: 400})
+		return
+	}
+
+	if userID != updatedUser.ID {
+		writeError(w, s.AuthError{Msg: "User IDs are not matching", Status: 400})
+		return
+	}
+
+	err = a.AuthService.UpdateUser(&updatedUser, token)
+	if err != nil {
+		authErr, isAuthErr := err.(s.AuthError)
+		if isAuthErr {
+			writeError(w, authErr)
+		} else {
+			writeError(w, s.AuthError{Msg: err.Error(), Status: 500})
+		}
+		return
+	}
+}
+
 func (a *Auth) getToken(w http.ResponseWriter, r *http.Request) {
 	logger.Logf("INFO POST /v1/token request accepted")
 	a.options(w, r)
@@ -170,6 +225,7 @@ func (a *Auth) getUserById(w http.ResponseWriter, r *http.Request) {
 func (a *Auth) options(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Headers", "authorization")
+	w.Header().Set("Access-Control-Allow-Methods", "POST, GET, PATCH, OPTIONS")
 }
 
 func writeError(w http.ResponseWriter, err s.AuthError) {
@@ -182,6 +238,7 @@ func (a *Auth) start() {
 	r.Route("/v1", func(r chi.Router) {
 		r.Options("/*", a.options)
 		r.Post("/users", a.createUser)
+		r.Patch("/users/{userID}", a.updateUser)
 		r.Post("/token", a.getToken)
 		r.Get("/userinfo/byid/{userID}", a.getUserById)
 		r.Get("/userinfo/byusername/{username}", a.getUserByUsername)
@@ -206,6 +263,6 @@ func main() {
 	dao := dao.NewMongoUserDao(conf.MongoDBURL, conf.DatabaseName)
 	service := AuthService{UserDao: dao, Config: conf}
 	auth := Auth{AuthService: &service}
-	logger.Logf("INFO BrightonUM 1.4.0 is starting")
+	logger.Logf("INFO BrightonUM 1.5.0 is starting")
 	auth.start()
 }

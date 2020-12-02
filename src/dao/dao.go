@@ -19,4 +19,7 @@ type UserDao interface {
 
 	// GetAll returns all users or empty list
 	GetAll() (*[]structs.User, error)
+
+	// Update updates user if exists
+	Update(*structs.User) error
 }

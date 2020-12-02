@@ -4,6 +4,8 @@ COPY . /app
 
 WORKDIR /app
 
+RUN go test ./...
+
 RUN go build -o main ./src
 
 EXPOSE 2525

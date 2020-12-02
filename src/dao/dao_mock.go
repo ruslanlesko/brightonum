@@ -53,3 +53,12 @@ func (m *MockUserDao) GetAll() (*[]structs.User, error) {
 	}
 	return provided.(*[]structs.User), castedErr
 }
+
+func (m *MockUserDao) Update(u *structs.User) error {
+	err := m.Called(u).Get(0)
+	var castedErr error = nil
+	if err != nil {
+		castedErr = err.(error)
+	}
+	return castedErr
+}

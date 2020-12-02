@@ -1,6 +1,7 @@
 package main
 
 import (
+	"io/ioutil"
 	"testing"
 	"time"
 
@@ -129,12 +130,42 @@ func TestAuthService_GetUsers(t *testing.T) {
 	assert.Equal(t, expected, us)
 }
 
+func TestAuthService_UpdateUser(t *testing.T) {
+	user := createTestUserUpdatePayload()
+	token := issueTestToken(user.ID, user.Username, createTestConfig().PrivKeyPath)
+
+	dao := dao.MockUserDao{}
+	dao.On("Get", user.ID).Return(&user, nil)
+	dao.On("GetByUsername", user.Username).Return(&user, nil)
+	dao.On("Update", &user).Return(nil)
+
+	s := AuthService{&dao, createTestConfig()}
+
+	err := s.UpdateUser(&user, token)
+	assert.Nil(t, err)
+}
+
+func TestAuthService_UpdateUserInvalidToken(t *testing.T) {
+	user := createTestUserUpdatePayload()
+	token := "invalid token"
+
+	dao := dao.MockUserDao{}
+	s := AuthService{&dao, createTestConfig()}
+
+	err := s.UpdateUser(&user, token)
+	assert.Equal(t, st.AuthError{Msg: "Invalid token", Status: 401}, err)
+}
+
 func createTestUser() st.User {
 	return st.User{42, "alle", "test", "user", "test@email.com", "$2a$04$Mhlu1.a4QchlVgGQFc/0N.qAw9tsXqm1OMwjJRaPRCWn47bpsRa4S"}
 }
 
+func createTestUserUpdatePayload() st.User {
+	return st.User{42, "", "", "", "changed@email.com", ""}
+}
+
 func createTestUserInfo() st.UserInfo {
-	return st.UserInfo{42, "alle", "test", "user"}
+	return st.UserInfo{42, "alle", "test", "user", "test@email.com"}
 }
 
 func createAnotherTestUser() st.User {
@@ -142,7 +173,7 @@ func createAnotherTestUser() st.User {
 }
 
 func createAdditionalTestUserInfo() st.UserInfo {
-	return st.UserInfo{43, "alle2", "test", "user"}
+	return st.UserInfo{43, "alle2", "test", "user", "test@email.com"}
 }
 
 func createTestConfig() Config {
@@ -188,4 +219,28 @@ func exctractField(tokenStr string, fieldName string, defaultValue interface{}) 
 	}
 
 	return actualValue
+}
+
+func issueTestToken(userID int, username string, privKeyPath string) string {
+	keyData, err := ioutil.ReadFile(privKeyPath)
+	if err != nil {
+		return ""
+	}
+	key, err := jwt.ParseRSAPrivateKeyFromPEM(keyData)
+	if err != nil {
+		return ""
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodRS256, jwt.MapClaims{
+		"sub":    username,
+		"userId": userID,
+		"exp":    time.Now().Add(time.Hour).UTC().Unix(),
+	})
+
+	tokenString, err := token.SignedString(key)
+	if err != nil {
+		return ""
+	}
+
+	return tokenString
 }

@@ -48,9 +48,50 @@ func (s *AuthService) CreateUser(u *st.User) error {
 	return nil
 }
 
+// UpdateUser updates existing user
+func (s *AuthService) UpdateUser(u *st.User, token string) error {
+	logger.Logf("DEBUG Updating user with id %d", u.ID)
+
+	tokenUser, valid := s.validateToken(token)
+	if !valid || tokenUser.ID != u.ID {
+		return st.AuthError{Msg: "Invalid token", Status: 401}
+	}
+
+	if !validateUpdatePayload(u) {
+		return st.AuthError{Msg: "Invalid Update payload", Status: 400}
+	}
+
+	userExists, err := s.userExists(u.ID)
+	if err != nil {
+		return st.AuthError{Msg: err.Error(), Status: 500}
+	}
+	if !userExists {
+		return st.AuthError{Msg: "User does not exist", Status: 404}
+	}
+
+	err = s.UserDao.Update(u)
+	if err != nil {
+		return st.AuthError{Msg: err.Error(), Status: 500}
+	}
+
+	return nil
+}
+
 func (s *AuthService) usernameExists(username string) (bool, error) {
 	u, err := s.UserDao.GetByUsername(username)
 	return u != nil, err
+}
+
+func validateUpdatePayload(u *st.User) bool {
+	return u.ID > 0 && u.Username == "" && u.Password == ""
+}
+
+func (s *AuthService) userExists(id int) (bool, error) {
+	u, err := s.UserDao.Get(id)
+	if err != nil {
+		return false, err
+	}
+	return u != nil, nil
 }
 
 // BasicAuthToken issues new token by username and password
@@ -131,7 +172,7 @@ func (s *AuthService) issueRefreshToken(user *st.User) (string, error) {
 
 // RefreshToken refreshes existing token
 func (s *AuthService) RefreshToken(t string) (string, error) {
-	u, ok := s.validateRefreshToken(t)
+	u, ok := s.validateToken(t)
 	if ok {
 		accessToken, err := s.issueAccessToken(u)
 		return accessToken, err
@@ -139,7 +180,7 @@ func (s *AuthService) RefreshToken(t string) (string, error) {
 	return "", st.AuthError{Msg: "Refresh token is not valid", Status: 403}
 }
 
-func (s *AuthService) validateRefreshToken(t string) (*st.User, bool) {
+func (s *AuthService) validateToken(t string) (*st.User, bool) {
 	keyData, err := ioutil.ReadFile(s.Config.PubKeyPath)
 	if err != nil {
 		return nil, false
@@ -211,7 +252,7 @@ func (s *AuthService) GetUserById(id int) (*st.UserInfo, error) {
 	if u == nil {
 		return nil, nil
 	}
-	return &st.UserInfo{ID: u.ID, Username: u.Username, FirstName: u.FirstName, LastName: u.LastName}, nil
+	return &st.UserInfo{ID: u.ID, Username: u.Username, FirstName: u.FirstName, LastName: u.LastName, Email: u.Email}, nil
 }
 
 // GetUserById returns user info for username
@@ -244,5 +285,5 @@ func mapToUserInfoList(us *[]st.User) *[]st.UserInfo {
 }
 
 func mapToUserInfo(u *st.User) *st.UserInfo {
-	return &st.UserInfo{ID: u.ID, Username: u.Username, FirstName: u.FirstName, LastName: u.LastName}
+	return &st.UserInfo{ID: u.ID, Username: u.Username, FirstName: u.FirstName, LastName: u.LastName, Email: u.Email}
 }

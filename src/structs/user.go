@@ -20,6 +20,7 @@ type UserInfo struct {
 	Username  string `json:"username"`
 	FirstName string `json:"firstName"`
 	LastName  string `json:"lastName"`
+	Email     string `json:"email"`
 }
 
 func U2JSON(u *User) []byte {

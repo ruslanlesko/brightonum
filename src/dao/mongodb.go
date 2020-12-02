@@ -172,3 +172,27 @@ func (d *MongoUserDao) GetAll() (*[]s.User, error) {
 
 	return &result, nil
 }
+
+// Update updates user if exists
+func (d *MongoUserDao) Update(u *s.User) error {
+	session := d.Session.Clone()
+	defer session.Close()
+
+	collection := session.DB(d.DatabaseName).C(collectionName)
+
+	updateBody := bson.M{}
+	if u.FirstName != "" {
+		updateBody["firstName"] = u.FirstName
+	}
+	if u.LastName != "" {
+		updateBody["lastName"] = u.LastName
+	}
+	if u.Email != "" {
+		updateBody["email"] = u.Email
+	}
+	if u.Password != "" {
+		updateBody["password"] = u.Password
+	}
+
+	return collection.UpdateId(u.ID, bson.M{"$set": updateBody})
+}
