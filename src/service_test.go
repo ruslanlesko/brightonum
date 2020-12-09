@@ -7,10 +7,13 @@ import (
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 
 	"ruslanlesko/brightonum/src/dao"
 	st "ruslanlesko/brightonum/src/structs"
 )
+
+var mailer = MailerMock{}
 
 func TestAuthService_CreateUser(t *testing.T) {
 	var u = st.User{-1, "uname", "test", "user", "test@email.com", "pwd"}
@@ -19,7 +22,7 @@ func TestAuthService_CreateUser(t *testing.T) {
 	dao.On("Save", &u).Return(1)
 	dao.On("GetByUsername", u.Username).Return(nil, nil)
 
-	s := AuthService{&dao, createTestConfig()}
+	s := AuthService{&mailer, &dao, createTestConfig()}
 	err := s.CreateUser(&u)
 
 	assert.Nil(t, err)
@@ -32,7 +35,7 @@ func TestAuthService_CreateUser_DuplicateHandling(t *testing.T) {
 	dao := dao.MockUserDao{}
 	dao.On("GetByUsername", u.Username).Return(&u, nil)
 
-	s := AuthService{&dao, createTestConfig()}
+	s := AuthService{&mailer, &dao, createTestConfig()}
 	err := s.CreateUser(&u)
 	assert.Equal(t, st.AuthError{Msg: "Username already exists", Status: 400}, err)
 }
@@ -45,7 +48,7 @@ func TestAuthService_BasicAuthToken(t *testing.T) {
 	dao := dao.MockUserDao{}
 	dao.On("GetByUsername", username).Return(&user, nil)
 
-	s := AuthService{&dao, createTestConfig()}
+	s := AuthService{&mailer, &dao, createTestConfig()}
 	accessToken, refreshToken, err := s.BasicAuthToken(username, password)
 	assert.Nil(t, err)
 	assert.NotEmpty(t, accessToken)
@@ -78,7 +81,7 @@ func TestAuthService_RefreshToken(t *testing.T) {
 	dao := dao.MockUserDao{}
 	dao.On("GetByUsername", username).Return(&user, nil)
 
-	s := AuthService{&dao, createTestConfig()}
+	s := AuthService{&mailer, &dao, createTestConfig()}
 	accessToken, refreshToken, err := s.BasicAuthToken(username, password)
 	assert.Nil(t, err)
 	assert.NotEmpty(t, accessToken)
@@ -100,7 +103,7 @@ func TestAuthService_GetUserByToken(t *testing.T) {
 	dao := dao.MockUserDao{}
 	dao.On("GetByUsername", username).Return(&user, nil)
 
-	s := AuthService{&dao, createTestConfig()}
+	s := AuthService{&mailer, &dao, createTestConfig()}
 	token, _, err := s.BasicAuthToken(username, password)
 	assert.Nil(t, err)
 
@@ -120,7 +123,7 @@ func TestAuthService_GetUsers(t *testing.T) {
 	dao := dao.MockUserDao{}
 	dao.On("GetAll").Return(&[]st.User{user1, user2}, nil)
 
-	s := AuthService{&dao, createTestConfig()}
+	s := AuthService{&mailer, &dao, createTestConfig()}
 
 	userInfo := createTestUserInfo()
 	userInfo2 := createAdditionalTestUserInfo()
@@ -139,7 +142,7 @@ func TestAuthService_UpdateUser(t *testing.T) {
 	dao.On("GetByUsername", user.Username).Return(&user, nil)
 	dao.On("Update", &user).Return(nil)
 
-	s := AuthService{&dao, createTestConfig()}
+	s := AuthService{&mailer, &dao, createTestConfig()}
 
 	err := s.UpdateUser(&user, token)
 	assert.Nil(t, err)
@@ -150,10 +153,37 @@ func TestAuthService_UpdateUserInvalidToken(t *testing.T) {
 	token := "invalid token"
 
 	dao := dao.MockUserDao{}
-	s := AuthService{&dao, createTestConfig()}
+	s := AuthService{&mailer, &dao, createTestConfig()}
 
 	err := s.UpdateUser(&user, token)
 	assert.Equal(t, st.AuthError{Msg: "Invalid token", Status: 401}, err)
+}
+
+func TestAuthService_SendRecoveryEmail(t *testing.T) {
+	user := createTestUser()
+
+	codeMatcher := func(code string) bool {
+		return len(code) == 6
+	}
+
+	dao := dao.MockUserDao{}
+
+	mailer.On(
+		"SendRecoveryCode",
+		user.Email,
+		mock.MatchedBy(codeMatcher)).Return(nil)
+
+	dao.On(
+		"SetRecoveryCode",
+		user.ID,
+		mock.MatchedBy(func(hashedCode string) bool { return hashedCode != "" })).Return(nil)
+
+	dao.On("GetByUsername", user.Username).Return(&user, nil)
+
+	s := AuthService{&mailer, &dao, createTestConfig()}
+
+	err := s.SendRecoveryEmail(user.Username)
+	assert.Nil(t, err)
 }
 
 func createTestUser() st.User {

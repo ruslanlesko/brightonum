@@ -36,8 +36,19 @@ type Config struct {
 	// Database name
 	DatabaseName string `long:"databaseName" required:"true" description:"Database name"`
 
+	// Email for password recovery (Gmail)
+	Email string `long:"email" required:"true" description:"Email for password recovery (Gmail)"`
+
+	// Password from email for password recovery
+	EmailPassword string `long:"emailPassword" required:"true" description:"Password from email for password recovery"`
+
 	// Enable debug logging
 	Debug bool `long:"debug" required:"false" description:"Enable debug logging"`
+}
+
+// RecoveryEmailPayload represents payload of password recovery email request
+type RecoveryEmailPayload struct {
+	Username string `json:"username"`
 }
 
 func (a *Auth) createUser(w http.ResponseWriter, r *http.Request) {
@@ -222,6 +233,32 @@ func (a *Auth) getUserById(w http.ResponseWriter, r *http.Request) {
 	w.Write(s.UI2JSON(user))
 }
 
+func (a *Auth) emailRecoveryCode(w http.ResponseWriter, r *http.Request) {
+	logger.Logf("INFO POST /v1/password-recovery/email request accepted")
+	a.options(w, r)
+	w.Header().Add("Content-type", "application/json; charset=utf-8")
+
+	if r.Body == nil {
+		logger.Logf("ERROR Data is missing")
+		writeError(w, s.AuthError{Msg: "Request body is missing", Status: 400})
+		return
+	}
+
+	var payload RecoveryEmailPayload
+	err := json.NewDecoder(r.Body).Decode(&payload)
+	if err != nil || payload.Username == "" {
+		logger.Logf("ERROR Invalid payload")
+		writeError(w, s.AuthError{Msg: err.Error(), Status: 400})
+		return
+	}
+
+	err = a.AuthService.SendRecoveryEmail(payload.Username)
+	if err != nil {
+		writeError(w, err.(s.AuthError))
+		return
+	}
+}
+
 func (a *Auth) options(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Headers", "authorization")
@@ -243,6 +280,7 @@ func (a *Auth) start() {
 		r.Get("/userinfo/byid/{userID}", a.getUserById)
 		r.Get("/userinfo/byusername/{username}", a.getUserByUsername)
 		r.Get("/userinfo", a.getUsers)
+		r.Post("/password-recovery/email", a.emailRecoveryCode)
 	})
 	http.ListenAndServe(":2525", r)
 }
@@ -261,7 +299,8 @@ func main() {
 	}
 
 	dao := dao.NewMongoUserDao(conf.MongoDBURL, conf.DatabaseName)
-	service := AuthService{UserDao: dao, Config: conf}
+	mailer := EmailMailer{Email: conf.Email, Password: conf.EmailPassword}
+	service := AuthService{UserDao: dao, Mailer: &mailer, Config: conf}
 	auth := Auth{AuthService: &service}
 	logger.Logf("INFO BrightonUM 1.5.0 is starting")
 	auth.start()

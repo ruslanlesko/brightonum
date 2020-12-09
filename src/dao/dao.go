@@ -22,4 +22,7 @@ type UserDao interface {
 
 	// Update updates user if exists
 	Update(*structs.User) error
+
+	// SetRecoveryCode sets password recovery code for user id
+	SetRecoveryCode(int, string) error
 }

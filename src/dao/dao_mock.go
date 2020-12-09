@@ -62,3 +62,12 @@ func (m *MockUserDao) Update(u *structs.User) error {
 	}
 	return castedErr
 }
+
+func (m *MockUserDao) SetRecoveryCode(id int, code string) error {
+	err := m.Called(id, code).Get(0)
+	var castedErr error = nil
+	if err != nil {
+		castedErr = err.(error)
+	}
+	return castedErr
+}

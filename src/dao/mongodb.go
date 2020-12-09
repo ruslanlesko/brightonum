@@ -196,3 +196,15 @@ func (d *MongoUserDao) Update(u *s.User) error {
 
 	return collection.UpdateId(u.ID, bson.M{"$set": updateBody})
 }
+
+// SetRecoveryCode sets password recovery code for user id
+func (d *MongoUserDao) SetRecoveryCode(id int, code string) error {
+	session := d.Session.Clone()
+	defer session.Close()
+
+	collection := session.DB(d.DatabaseName).C(collectionName)
+
+	updateBody := bson.M{"recoveryCode": code}
+
+	return collection.UpdateId(id, bson.M{"$set": updateBody})
+}

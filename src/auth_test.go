@@ -129,6 +129,20 @@ func TestFunctional_Update(t *testing.T) {
 	assert.Equal(t, 200, resp.StatusCode)
 }
 
+func TestFunctional_EmailRecoveryCode(t *testing.T) {
+	client := &http.Client{}
+
+	req, err := http.NewRequest(
+		http.MethodPost,
+		baseURL+"v1/password-recovery/email",
+		bytes.NewReader([]byte("{\"username\":\""+user.Username+"\"}")))
+
+	assert.Nil(t, err)
+	resp, err := client.Do(req)
+	assert.Nil(t, err)
+	assert.Equal(t, 200, resp.StatusCode)
+}
+
 func setup() {
 	dao := dao.MockUserDao{}
 	dao.On("GetByUsername", user.Username).Return(&user, nil)
@@ -139,9 +153,17 @@ func setup() {
 			return u.Username == user2.Username && u.FirstName == user2.FirstName && u.LastName == user2.LastName
 		})).Return(43)
 	dao.On("Update", &updatedUser).Return(nil)
+	dao.On("SetRecoveryCode", user.ID,
+		mock.MatchedBy(func(hashedCode string) bool { return hashedCode != "" })).Return(nil)
+
+	mailer := MailerMock{}
+	mailer.On("SendRecoveryCode", user.Email, mock.MatchedBy(
+		func(code string) bool {
+			return len(code) == 6
+		})).Return(nil)
 
 	conf := Config{PrivKeyPath: "../test_data/private.pem", PubKeyPath: "../test_data/public.pem"}
-	service := AuthService{UserDao: &dao, Config: conf}
+	service := AuthService{UserDao: &dao, Mailer: &mailer, Config: conf}
 
 	auth := Auth{AuthService: &service}
 	go auth.start()

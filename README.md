@@ -14,6 +14,7 @@ Port number: 2525
 * PATCH `/v1/users/{id}` Updates user data
 * POST `/v1/token` Issues a token using basic auth. Returns JSON with 2 fields: accessToken and refreshToken
 * POST `/v1/token?type=refresh_token` Issues an access token using refresh token (bearer)
+* POST `/v1/password-recovery/email` Sends email with a password recovery code
 
 Any errors would result in corresponding 4xx or 5xx status code and a JSON body with single `error` string attribute containing error message.
 
@@ -46,6 +47,13 @@ Token will expire in an hour. `exp` field is Unix time.
 }
 ```
 Token will expire in a year. `exp` field is Unix time.
+
+### Payload of password recovery:
+```
+{
+  "username": "sarah69"
+}
+```
 
 ## Build and run
 

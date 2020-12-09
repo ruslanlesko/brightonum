@@ -3,9 +3,11 @@ package main
 import (
 	"fmt"
 	"io/ioutil"
+	"math/rand"
 	"ruslanlesko/brightonum/src/crypto"
 	"ruslanlesko/brightonum/src/dao"
 	st "ruslanlesko/brightonum/src/structs"
+	"strconv"
 
 	"time"
 
@@ -14,6 +16,7 @@ import (
 
 // AuthService provides all auth operations
 type AuthService struct {
+	Mailer  Mailer
 	UserDao dao.UserDao
 	Config  Config
 }
@@ -36,7 +39,7 @@ func (s *AuthService) CreateUser(u *st.User) error {
 	hashedPassword, err := crypto.Hash(u.Password)
 	if err != nil {
 		logger.Logf("ERROR Failed to hash password, %s", err.Error())
-		return err
+		return st.AuthError{Msg: err.Error(), Status: 500}
 	}
 
 	u.Password = hashedPassword
@@ -274,6 +277,44 @@ func (s *AuthService) GetUsers() (*[]st.UserInfo, error) {
 		return nil, st.AuthError{Msg: err.Error(), Status: 500}
 	}
 	return mapToUserInfoList(us), nil
+}
+
+// SendRecoveryEmail sends password recovery email for user or error is user does not exist or email sending fails
+func (s *AuthService) SendRecoveryEmail(username string) error {
+	u, err := s.UserDao.GetByUsername(username)
+	if err != nil {
+		return st.AuthError{Msg: err.Error(), Status: 500}
+	}
+	if u == nil {
+		return st.AuthError{Msg: "Username does not registered", Status: 404}
+	}
+
+	code := generateCode()
+	err = s.Mailer.SendRecoveryCode(u.Email, code)
+	if err != nil {
+		logger.Logf("ERROR Email was not sent: " + err.Error())
+		return st.AuthError{Msg: err.Error(), Status: 500}
+	}
+
+	hashedCode, err := crypto.Hash(code)
+	if err != nil {
+		logger.Logf("ERROR Failed to hash code, %s", err.Error())
+		return st.AuthError{Msg: err.Error(), Status: 500}
+	}
+
+	return s.UserDao.SetRecoveryCode(u.ID, hashedCode)
+}
+
+func generateCode() string {
+	rand.Seed(time.Now().UnixNano())
+	result := ""
+
+	for i := 0; i < 6; i++ {
+		d := rand.Intn(10)
+		result += strconv.Itoa(d)
+	}
+
+	return result
 }
 
 func mapToUserInfoList(us *[]st.User) *[]st.UserInfo {
