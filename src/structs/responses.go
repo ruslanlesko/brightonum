@@ -19,6 +19,10 @@ type AccessTokenResp struct {
 	AccessToken string `json:"accessToken"`
 }
 
+type ExchangeCodeResponse struct {
+	Code string `json:"code"`
+}
+
 func ER2JSON(r *ErrorResp) []byte {
 	data, _ := json.Marshal(r)
 	return data
@@ -35,6 +39,11 @@ func ARR2JSON(r *AccessAndRefreshTokenResp) []byte {
 }
 
 func AR2JSON(r *AccessTokenResp) []byte {
+	data, _ := json.Marshal(r)
+	return data
+}
+
+func EC2JSON(r *ExchangeCodeResponse) []byte {
 	data, _ := json.Marshal(r)
 	return data
 }

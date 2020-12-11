@@ -186,6 +186,27 @@ func TestAuthService_SendRecoveryEmail(t *testing.T) {
 	assert.Nil(t, err)
 }
 
+func TestAuthService_ExchangeRecoveryCode(t *testing.T) {
+	user := createTestUser()
+	code := "267483"
+	hashedCode := "$2a$04$c12NAkAi9nOxkYM5vO7eUur2fd9M23M4roKPbroOvNhsBVF0mOmS."
+
+	dao := dao.MockUserDao{}
+
+	dao.On("GetByUsername", user.Username).Return(&user, nil)
+	dao.On("GetRecoveryCode", user.ID).Return(hashedCode, nil)
+	dao.On(
+		"SetResetingCode", 
+		user.ID, 
+		mock.MatchedBy(func (hashedResettingCode string) bool { return hashedResettingCode != "" })).Return(nil)
+
+	s := AuthService{&mailer, &dao, createTestConfig()}
+
+	resettingCode, err := s.ExchangeRecoveryCode(user.Username, code)
+	assert.Nil(t, err)
+	assert.True(t, len(resettingCode) == 10)
+}
+
 func createTestUser() st.User {
 	return st.User{42, "alle", "test", "user", "test@email.com", "$2a$04$Mhlu1.a4QchlVgGQFc/0N.qAw9tsXqm1OMwjJRaPRCWn47bpsRa4S"}
 }

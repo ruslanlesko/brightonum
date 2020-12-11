@@ -71,3 +71,12 @@ func (m *MockUserDao) SetRecoveryCode(id int, code string) error {
 	}
 	return castedErr
 }
+
+func (m *MockUserDao) GetRecoveryCode(id int) (string, error) {
+	args := m.Called(id)
+	return args.String(0), args.Error(1)
+}
+
+func (m *MockUserDao) SetResetingCode(id int, code string) error {
+	return m.Called(id, code).Error(0)
+}

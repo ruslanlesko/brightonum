@@ -289,7 +289,7 @@ func (s *AuthService) SendRecoveryEmail(username string) error {
 		return st.AuthError{Msg: "Username does not registered", Status: 404}
 	}
 
-	code := generateCode()
+	code := generateCode(6)
 	err = s.Mailer.SendRecoveryCode(u.Email, code)
 	if err != nil {
 		logger.Logf("ERROR Email was not sent: " + err.Error())
@@ -305,11 +305,51 @@ func (s *AuthService) SendRecoveryEmail(username string) error {
 	return s.UserDao.SetRecoveryCode(u.ID, hashedCode)
 }
 
-func generateCode() string {
+// ExchangeRecoveryCode exchanges recovery code for a password resetting one
+func (s *AuthService) ExchangeRecoveryCode(username string, code string) (string, error) {
+	generalErrorMsg := "Username does not registered or recovery process has not been initiated"
+
+	u, err := s.UserDao.GetByUsername(username)
+	if err != nil {
+		return "", st.AuthError{Msg: err.Error(), Status: 500}
+	}
+	if u == nil {
+		return "", st.AuthError{Msg: generalErrorMsg, Status: 404}
+	}
+
+	existingCodeHash, err := s.UserDao.GetRecoveryCode(u.ID)
+	if err != nil {
+		return "", st.AuthError{Msg: err.Error(), Status: 500}
+	}
+
+	if existingCodeHash == "" {
+		return "", st.AuthError{Msg: generalErrorMsg, Status: 404}
+	}
+
+	if !crypto.Match(code, existingCodeHash) {
+		return "", st.AuthError{Msg: "Provided recovery code does not match", Status: 403}
+	}
+
+	resetingCode := generateCode(10)
+	resetingCodeHash, err := crypto.Hash(resetingCode)
+	if err != nil {
+		logger.Logf("ERROR Failed to hash code, %s", err.Error())
+		return "", st.AuthError{Msg: err.Error(), Status: 500}
+	}
+
+	err = s.UserDao.SetResetingCode(u.ID, resetingCodeHash)
+	if err != nil {
+		return "", st.AuthError{Msg: err.Error(), Status: 500}
+	}
+
+	return resetingCode, nil
+}
+
+func generateCode(size int) string {
 	rand.Seed(time.Now().UnixNano())
 	result := ""
 
-	for i := 0; i < 6; i++ {
+	for i := 0; i < size; i++ {
 		d := rand.Intn(10)
 		result += strconv.Itoa(d)
 	}

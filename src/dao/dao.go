@@ -25,4 +25,10 @@ type UserDao interface {
 
 	// SetRecoveryCode sets password recovery code for user id
 	SetRecoveryCode(int, string) error
+
+	// GetRecoveryCode extracts recovery code for user id
+	GetRecoveryCode(int) (string, error)
+
+	// SetResetingCode sets resetting code and removes recovery one
+	SetResetingCode(int, string) error
 }

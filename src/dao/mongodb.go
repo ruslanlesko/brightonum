@@ -208,3 +208,32 @@ func (d *MongoUserDao) SetRecoveryCode(id int, code string) error {
 
 	return collection.UpdateId(id, bson.M{"$set": updateBody})
 }
+
+// GetRecoveryCode extracts recovery code for user id
+func (d *MongoUserDao) GetRecoveryCode(id int) (string, error) {
+	session := d.Session.Clone()
+	defer session.Close()
+
+	collection := session.DB(d.DatabaseName).C(collectionName)
+
+	var result struct{ RecoveryCode string `bson:"recoveryCode"` }
+	err := collection.FindId(id).Select(bson.M{"recoveryCode": 1}).One(&result)
+	
+	if err != nil {
+		return "", err
+	}
+
+	return result.RecoveryCode, nil
+}
+
+// SetResetingCode sets resetting code and removes recovery one
+func (d *MongoUserDao) SetResetingCode(id int, code string) error {
+	session := d.Session.Clone()
+	defer session.Close()
+
+	collection := session.DB(d.DatabaseName).C(collectionName)
+
+	updateBody := bson.M{"recoveryCode": "", "resettingCode": code}
+	
+	return collection.UpdateId(id, bson.M{"$set": updateBody})
+}

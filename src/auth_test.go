@@ -18,10 +18,19 @@ import (
 
 const baseURL string = "http://localhost:2525/"
 
-var user = s.User{42, "alle", "test", "user", "test@email.com", "$2a$04$Mhlu1.a4QchlVgGQFc/0N.qAw9tsXqm1OMwjJRaPRCWn47bpsRa4S"}
-var updatedUser = s.User{42, "", "", "", "updated@email.com", ""}
-var user2 = s.User{-1, "sarah", "Sarah", "Lynn", "sarah@email.com", "oakheart"}
-var userInfo = s.UserInfo{42, "alle", "test", "user", "test@email.com"}
+var user = s.User{
+	ID:        42,
+	Username:  "alle",
+	FirstName: "test",
+	LastName:  "user",
+	Email:     "test@email.com",
+	Password:  "$2a$04$Mhlu1.a4QchlVgGQFc/0N.qAw9tsXqm1OMwjJRaPRCWn47bpsRa4S",
+}
+var updatedUser = s.User{ID: 42, Email: "updated@email.com"}
+var user2 = s.User{ID: -1, Username: "sarah", FirstName: "Sarah", LastName: "Lynn", Email: "sarah@email.com", Password: "oakheart"}
+var userInfo = s.UserInfo{ID: 42, Username: "alle", FirstName: "test", LastName: "user", Email: "test@email.com"}
+var code = "267483"
+var hashedCode = "$2a$04$c12NAkAi9nOxkYM5vO7eUur2fd9M23M4roKPbroOvNhsBVF0mOmS."
 
 func TestMain(m *testing.M) {
 	setup()
@@ -136,8 +145,22 @@ func TestFunctional_EmailRecoveryCode(t *testing.T) {
 		http.MethodPost,
 		baseURL+"v1/password-recovery/email",
 		bytes.NewReader([]byte("{\"username\":\""+user.Username+"\"}")))
-
 	assert.Nil(t, err)
+
+	resp, err := client.Do(req)
+	assert.Nil(t, err)
+	assert.Equal(t, 200, resp.StatusCode)
+}
+
+func TestFunctional_ExchangeRecoveryCode(t *testing.T) {
+	client := &http.Client{}
+
+	req, err := http.NewRequest(
+		http.MethodPost,
+		baseURL+"v1/password-recovery/exchange",
+		bytes.NewReader([]byte("{\"username\":\""+user.Username+"\",\"code\":\"" + code + "\"}")))
+	assert.Nil(t, err)
+
 	resp, err := client.Do(req)
 	assert.Nil(t, err)
 	assert.Equal(t, 200, resp.StatusCode)
@@ -155,6 +178,11 @@ func setup() {
 	dao.On("Update", &updatedUser).Return(nil)
 	dao.On("SetRecoveryCode", user.ID,
 		mock.MatchedBy(func(hashedCode string) bool { return hashedCode != "" })).Return(nil)
+	dao.On("GetRecoveryCode", user.ID).Return(hashedCode, nil)
+	dao.On(
+		"SetResetingCode",
+		user.ID,
+		mock.MatchedBy(func(hashedResettingCode string) bool { return hashedResettingCode != "" })).Return(nil)
 
 	mailer := MailerMock{}
 	mailer.On("SendRecoveryCode", user.Email, mock.MatchedBy(
