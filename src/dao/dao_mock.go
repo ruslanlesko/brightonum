@@ -77,6 +77,15 @@ func (m *MockUserDao) GetRecoveryCode(id int) (string, error) {
 	return args.String(0), args.Error(1)
 }
 
-func (m *MockUserDao) SetResetingCode(id int, code string) error {
+func (m *MockUserDao) SetResettingCode(id int, code string) error {
 	return m.Called(id, code).Error(0)
+}
+
+func (m *MockUserDao) GetResettingCode(id int) (string, error) {
+	args := m.Called(id)
+	return args.String(0), args.Error(1)
+}
+
+func (m *MockUserDao) ResetPassword(id int, passwordHash string) error {
+	return m.Called(id, passwordHash).Error(0)
 }

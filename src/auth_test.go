@@ -158,7 +158,21 @@ func TestFunctional_ExchangeRecoveryCode(t *testing.T) {
 	req, err := http.NewRequest(
 		http.MethodPost,
 		baseURL+"v1/password-recovery/exchange",
-		bytes.NewReader([]byte("{\"username\":\""+user.Username+"\",\"code\":\"" + code + "\"}")))
+		bytes.NewReader([]byte("{\"username\":\""+user.Username+"\",\"code\":\""+code+"\"}")))
+	assert.Nil(t, err)
+
+	resp, err := client.Do(req)
+	assert.Nil(t, err)
+	assert.Equal(t, 200, resp.StatusCode)
+}
+
+func TestFunctional_ResetPassword(t *testing.T) {
+	client := &http.Client{}
+
+	req, err := http.NewRequest(
+		http.MethodPost,
+		baseURL+"v1/password-recovery/reset",
+		bytes.NewReader([]byte("{\"username\":\""+user.Username+"\",\"code\":\""+code+"\",\"password\":\"kek\"}")))
 	assert.Nil(t, err)
 
 	resp, err := client.Do(req)
@@ -180,9 +194,14 @@ func setup() {
 		mock.MatchedBy(func(hashedCode string) bool { return hashedCode != "" })).Return(nil)
 	dao.On("GetRecoveryCode", user.ID).Return(hashedCode, nil)
 	dao.On(
-		"SetResetingCode",
+		"SetResettingCode",
 		user.ID,
 		mock.MatchedBy(func(hashedResettingCode string) bool { return hashedResettingCode != "" })).Return(nil)
+	dao.On("GetResettingCode", user.ID).Return(hashedCode, nil)
+	dao.On(
+		"ResetPassword",
+		user.ID,
+		mock.MatchedBy(func(hashedPassword string) bool { return hashedPassword != "" })).Return(nil)
 
 	mailer := MailerMock{}
 	mailer.On("SendRecoveryCode", user.Email, mock.MatchedBy(

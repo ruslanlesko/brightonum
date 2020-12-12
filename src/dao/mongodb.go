@@ -216,9 +216,11 @@ func (d *MongoUserDao) GetRecoveryCode(id int) (string, error) {
 
 	collection := session.DB(d.DatabaseName).C(collectionName)
 
-	var result struct{ RecoveryCode string `bson:"recoveryCode"` }
+	var result struct {
+		RecoveryCode string `bson:"recoveryCode"`
+	}
 	err := collection.FindId(id).Select(bson.M{"recoveryCode": 1}).One(&result)
-	
+
 	if err != nil {
 		return "", err
 	}
@@ -226,14 +228,45 @@ func (d *MongoUserDao) GetRecoveryCode(id int) (string, error) {
 	return result.RecoveryCode, nil
 }
 
-// SetResetingCode sets resetting code and removes recovery one
-func (d *MongoUserDao) SetResetingCode(id int, code string) error {
+// SetResettingCode sets resetting code and removes recovery one
+func (d *MongoUserDao) SetResettingCode(id int, code string) error {
 	session := d.Session.Clone()
 	defer session.Close()
 
 	collection := session.DB(d.DatabaseName).C(collectionName)
 
 	updateBody := bson.M{"recoveryCode": "", "resettingCode": code}
-	
+
+	return collection.UpdateId(id, bson.M{"$set": updateBody})
+}
+
+// GetResettingCode extracts resetting code for user id
+func (d *MongoUserDao) GetResettingCode(id int) (string, error) {
+	session := d.Session.Clone()
+	defer session.Close()
+
+	collection := session.DB(d.DatabaseName).C(collectionName)
+
+	var result struct {
+		ResettingCode string `bson:"resettingCode"`
+	}
+	err := collection.FindId(id).Select(bson.M{"resettingCode": 1}).One(&result)
+
+	if err != nil {
+		return "", err
+	}
+
+	return result.ResettingCode, nil
+}
+
+// ResetPassword updates password and removes resetting code
+func (d *MongoUserDao) ResetPassword(id int, passwordHash string) error {
+	session := d.Session.Clone()
+	defer session.Close()
+
+	collection := session.DB(d.DatabaseName).C(collectionName)
+
+	updateBody := bson.M{"password": passwordHash, "resettingCode": ""}
+
 	return collection.UpdateId(id, bson.M{"$set": updateBody})
 }

@@ -15,7 +15,8 @@ Port number: 2525
 * POST `/v1/token` Issues a token using basic auth. Returns JSON with 2 fields: accessToken and refreshToken
 * POST `/v1/token?type=refresh_token` Issues an access token using refresh token (bearer)
 * POST `/v1/password-recovery/email` Sends email with a password recovery code
-* POST `/v1/password-recovery/exchange` Exchande recovery code for password reset code 
+* POST `/v1/password-recovery/exchange` Exchande recovery code for password reset code
+* POST `/v1/password-recovery/reset` Reset password using code from the exchange step
 
 Any errors would result in corresponding 4xx or 5xx status code and a JSON body with single `error` string attribute containing error message.
 
@@ -68,6 +69,15 @@ Token will expire in a year. `exp` field is Unix time.
 ```
 {
   "code": "1239874560"
+}
+```
+
+### Payload of password reset request
+```
+{
+  "username": "sarah69"
+  "code": "1239874560"
+  "password": "o@kh3art"
 }
 ```
 

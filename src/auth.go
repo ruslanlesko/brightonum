@@ -57,6 +57,13 @@ type ExchangeCodeRequestPayload struct {
 	Code     string `json:"code"`
 }
 
+// PasswordResetPayload represents request payload for password reset request
+type PasswordResetPayload struct {
+	Username string `json:"username"`
+	Code     string `json:"code"`
+	Password string `json:"password"`
+}
+
 func (a *Auth) createUser(w http.ResponseWriter, r *http.Request) {
 	logger.Logf("INFO POST /v1/users request accepted")
 	a.options(w, r)
@@ -293,6 +300,27 @@ func (a *Auth) exchangeRecoveryCode(w http.ResponseWriter, r *http.Request) {
 	w.Write(s.EC2JSON(&s.ExchangeCodeResponse{Code: code}))
 }
 
+func (a *Auth) resetPassword(w http.ResponseWriter, r *http.Request) {
+	logger.Logf("INFO POST /v1/password-recovery/reset request accepted")
+	a.options(w, r)
+
+	if r.Body == nil {
+		logger.Logf("ERROR Data is missing")
+		writeError(w, s.AuthError{Msg: "Request body is missing", Status: 400})
+		return
+	}
+
+	var payload PasswordResetPayload
+	err := json.NewDecoder(r.Body).Decode(&payload)
+	if err != nil || payload.Password == "" || payload.Code == "" || payload.Username == "" {
+		logger.Logf("ERROR Invalid payload")
+		writeError(w, s.AuthError{Msg: err.Error(), Status: 400})
+		return
+	}
+
+	err = a.AuthService.ResetPassword(payload.Username, payload.Code, payload.Password)
+}
+
 func (a *Auth) options(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Headers", "authorization")
@@ -316,6 +344,7 @@ func (a *Auth) start() {
 		r.Get("/userinfo", a.getUsers)
 		r.Post("/password-recovery/email", a.emailRecoveryCode)
 		r.Post("/password-recovery/exchange", a.exchangeRecoveryCode)
+		r.Post("/password-recovery/reset", a.resetPassword)
 	})
 	http.ListenAndServe(":2525", r)
 }

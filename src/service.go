@@ -337,12 +337,47 @@ func (s *AuthService) ExchangeRecoveryCode(username string, code string) (string
 		return "", st.AuthError{Msg: err.Error(), Status: 500}
 	}
 
-	err = s.UserDao.SetResetingCode(u.ID, resetingCodeHash)
+	err = s.UserDao.SetResettingCode(u.ID, resetingCodeHash)
 	if err != nil {
 		return "", st.AuthError{Msg: err.Error(), Status: 500}
 	}
 
 	return resetingCode, nil
+}
+
+// ResetPassword resets password given username and code
+func (s *AuthService) ResetPassword(username string, code string, newPassword string) error {
+	generalErrorMsg := "Username does not registered or recovery process has not been initiated"
+
+	u, err := s.UserDao.GetByUsername(username)
+	if err != nil {
+		return st.AuthError{Msg: err.Error(), Status: 500}
+	}
+	if u == nil {
+		return st.AuthError{Msg: generalErrorMsg, Status: 404}
+	}
+
+	existingCodeHash, err := s.UserDao.GetResettingCode(u.ID)
+	if err != nil {
+		return st.AuthError{Msg: err.Error(), Status: 500}
+	}
+
+	if !crypto.Match(code, existingCodeHash) {
+		return st.AuthError{Msg: "Provided recovery code does not match", Status: 403}
+	}
+
+	hashedPassword, err := crypto.Hash(newPassword)
+	if err != nil {
+		logger.Logf("ERROR Failed to hash password, %s", err.Error())
+		return st.AuthError{Msg: err.Error(), Status: 500}
+	}
+
+	err = s.UserDao.ResetPassword(u.ID, hashedPassword)
+	if err != nil {
+		return st.AuthError{Msg: err.Error(), Status: 500}
+	}
+
+	return nil
 }
 
 func generateCode(size int) string {
