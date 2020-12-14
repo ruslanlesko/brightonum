@@ -319,6 +319,10 @@ func (a *Auth) resetPassword(w http.ResponseWriter, r *http.Request) {
 	}
 
 	err = a.AuthService.ResetPassword(payload.Username, payload.Code, payload.Password)
+	if err != nil {
+		writeError(w, err.(s.AuthError))
+		return
+	}
 }
 
 func (a *Auth) options(w http.ResponseWriter, r *http.Request) {
@@ -366,6 +370,6 @@ func main() {
 	mailer := EmailMailer{Email: conf.Email, Password: conf.EmailPassword}
 	service := AuthService{UserDao: dao, Mailer: &mailer, Config: conf}
 	auth := Auth{AuthService: &service}
-	logger.Logf("INFO BrightonUM 1.5.0 is starting")
+	logger.Logf("INFO BrightonUM 1.5.1 is starting")
 	auth.start()
 }

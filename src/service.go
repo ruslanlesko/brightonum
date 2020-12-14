@@ -258,7 +258,7 @@ func (s *AuthService) GetUserById(id int) (*st.UserInfo, error) {
 	return &st.UserInfo{ID: u.ID, Username: u.Username, FirstName: u.FirstName, LastName: u.LastName, Email: u.Email}, nil
 }
 
-// GetUserById returns user info for username
+// GetUserByUsername returns user info for username
 func (s *AuthService) GetUserByUsername(username string) (*st.UserInfo, error) {
 	u, err := s.UserDao.GetByUsername(username)
 	if err != nil {
@@ -285,8 +285,8 @@ func (s *AuthService) SendRecoveryEmail(username string) error {
 	if err != nil {
 		return st.AuthError{Msg: err.Error(), Status: 500}
 	}
-	if u == nil {
-		return st.AuthError{Msg: "Username does not registered", Status: 404}
+	if u == nil || u.Email == "" {
+		return st.AuthError{Msg: "Username does not registered or email is absent", Status: 404}
 	}
 
 	code := generateCode(6)
