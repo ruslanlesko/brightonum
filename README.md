@@ -2,6 +2,8 @@
 # BrightonUM - simple authentication and user management system
 Created by [Ruslan Lesko](https://leskor.com)
 
+![badge](https://action-badges.now.sh/ruslanlesko/brightonum)
+
 BrightonUM is a perfect choice if you are looking for self-hosted JWT-based simple authentication and user management solution. This system exposes REST API and user authentication can be verified by checking signature of the issued JWT tokens (resource services need public keys for it). Data is stored using MongoDB, which is the only dependency for BrightonUM.
 
 ## API
