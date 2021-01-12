@@ -85,7 +85,7 @@ Token will expire in a year. `exp` field is Unix time.
 
 ## Build and run
 
-Make sure that you have Go 1.13 or later, MongoDB and RSA Keys (described below) on your machine.
+Make sure that you have Go 1.15 or later, MongoDB and RSA Keys (described below) on your machine.
 
 From the project root run
 `go build -o main ./src`
