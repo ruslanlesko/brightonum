@@ -1,4 +1,4 @@
-FROM golang:latest as build
+FROM golang:1.15.5 as build
 
 COPY . /app
 
