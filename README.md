@@ -37,7 +37,6 @@ Any errors would result in corresponding 4xx or 5xx status code and a JSON body 
 ```
 {
   "exp": 1579794679,
-  "refresh_token": "eyJhbGc...7hBV3FGQ",
   "sub": "sarah69",
   "userId": 42
 }
