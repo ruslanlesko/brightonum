@@ -1,6 +1,7 @@
 package dao
 
 import (
+	"context"
 	"os"
 	"os/signal"
 	s "ruslanlesko/brightonum/src/structs"
@@ -8,8 +9,10 @@ import (
 	"syscall"
 
 	"github.com/go-pkgz/lgr"
-	"gopkg.in/mgo.v2"
-	"gopkg.in/mgo.v2/bson"
+
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 var loggerFormat = lgr.Format(`{{.Level}} {{.DT.Format "2006-01-02 15:04:05.000"}} {{.Message}}`)
@@ -19,8 +22,9 @@ const collectionName string = "users"
 
 // MongoUserDao provides UserDao implementation via MongoDB
 type MongoUserDao struct {
-	Session      *mgo.Session
+	Client       *mongo.Client
 	DatabaseName string
+	Ctx          context.Context
 }
 
 // MaxIDResponse for response on pipe. Used for extracting current max id
@@ -29,8 +33,12 @@ type MaxIDResponse struct {
 	MaxID int    `bson:"MaxID"`
 }
 
+// NewMongoUserDao creates instance of MongoUserDao
 func NewMongoUserDao(URL string, databaseName string) *MongoUserDao {
-	session, err := mgo.Dial(URL)
+	ctx, cancel := context.WithCancel(context.Background())
+	client, err := mongo.Connect(ctx, options.Client().ApplyURI(URL))
+
+	// session, err := mgo.Dial(URL)
 	if err != nil {
 		logger.Logf("ERROR Failed to dial mongo url: '%s'", URL)
 		panic(err)
@@ -41,13 +49,14 @@ func NewMongoUserDao(URL string, databaseName string) *MongoUserDao {
 	go func() {
 		for range sigChan {
 			logger.Logf("INFO disconnecting from MongoDB")
-			session.Close()
+			client.Disconnect(ctx)
 			logger.Logf("INFO disconnected from MongoDB")
+			cancel()
 		}
 	}()
 	signal.Notify(sigChan, syscall.SIGTERM)
 
-	return &MongoUserDao{Session: session, DatabaseName: databaseName}
+	return &MongoUserDao{Client: client, DatabaseName: databaseName, Ctx: ctx}
 }
 
 // Save saves user in MongoDB.
@@ -63,18 +72,16 @@ func (d *MongoUserDao) doSave(u *s.User, attemptsLeft int) int {
 		return -1
 	}
 
-	session := d.Session.Clone()
-	defer session.Close()
+	collection := d.Client.Database(d.DatabaseName).Collection(collectionName)
 
-	newID := findNextID(session, d.DatabaseName)
+	newID := findNextID(d.Ctx, collection)
 
 	if newID < 0 {
 		return -1
 	}
 	u.ID = newID
 
-	collection := session.DB(d.DatabaseName).C(collectionName)
-	err := collection.Insert(&u)
+	_, err := collection.InsertOne(d.Ctx, &u)
 	if err != nil {
 		logger.Logf("ERROR %s", err)
 
@@ -88,86 +95,91 @@ func (d *MongoUserDao) doSave(u *s.User, attemptsLeft int) int {
 	return newID
 }
 
-func findNextID(session *mgo.Session, databaseName string) int {
-	resp := []MaxIDResponse{}
+func findNextID(ctx context.Context, collection *mongo.Collection) int {
+	resp := &MaxIDResponse{}
 
-	collection := session.DB(databaseName).C(collectionName)
-	err := collection.Pipe([]bson.M{
+	cur, err := collection.Aggregate(ctx, []bson.M{
 		{"$group": bson.M{
 			"_id":   nil,
 			"MaxID": bson.M{"$max": "$_id"},
 		},
 		},
-	}).All(&resp)
+	})
+	defer cur.Close(ctx)
+
+	// .All(&resp)
 	if err != nil {
 		logger.Logf("ERROR %s", err.Error())
 		return -1
 	}
 
-	if len(resp) == 0 {
-		return 1
+	if cur.Next(ctx) {
+		cur.Decode(resp)
+		return resp.MaxID + 1
 	}
 
-	return resp[0].MaxID + 1
+	return 1
 }
 
 // GetByUsername extracts user by username
 func (d *MongoUserDao) GetByUsername(username string) (*s.User, error) {
-	result := []s.User{}
+	result := &s.User{}
 
-	session := d.Session.Clone()
-	defer session.Close()
-
-	collection := session.DB(d.DatabaseName).C(collectionName)
-	err := collection.Find(bson.M{
+	collection := d.Client.Database(d.DatabaseName).Collection(collectionName)
+	err := collection.FindOne(d.Ctx, bson.M{
 		"username": strings.ToLower(username),
-	}).All(&result)
+	}).Decode(result)
+
 	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			return nil, nil
+		}
 		logger.Logf("ERROR %s", err)
 		return nil, err
 	}
 
-	if len(result) == 0 {
-		return nil, nil
-	}
-
-	return &result[0], nil
+	return result, nil
 }
 
 // Get returns user by id
 func (d *MongoUserDao) Get(id int) (*s.User, error) {
-	result := []s.User{}
+	result := &s.User{}
 
-	session := d.Session.Clone()
-	defer session.Close()
+	collection := d.Client.Database(d.DatabaseName).Collection(collectionName)
 
-	collection := session.DB(d.DatabaseName).C(collectionName)
-	err := collection.Find(bson.M{
+	err := collection.FindOne(d.Ctx, bson.M{
 		"_id": id,
-	}).All(&result)
+	}).Decode(result)
 	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			return nil, nil
+		}
 		logger.Logf("ERROR %s", err)
 		return nil, err
 	}
 
-	if len(result) == 0 {
-		return nil, nil
-	}
-
-	return &result[0], nil
+	return result, nil
 }
 
+// GetAll extracts all users
 func (d *MongoUserDao) GetAll() (*[]s.User, error) {
 	result := []s.User{}
 
-	session := d.Session.Clone()
-	defer session.Close()
-
-	collection := session.DB(d.DatabaseName).C(collectionName)
-	err := collection.Find(bson.M{}).All(&result)
+	collection := d.Client.Database(d.DatabaseName).Collection(collectionName)
+	cur, err := collection.Find(d.Ctx, bson.M{})
 	if err != nil {
 		logger.Logf("ERROR %s", err)
 		return nil, err
+	}
+	defer cur.Close(d.Ctx)
+	for cur.Next(d.Ctx) {
+		u := s.User{}
+		err = cur.Decode(&u)
+		if err != nil {
+			logger.Logf("ERROR %s", err)
+			return nil, err
+		}
+		result = append(result, u)
 	}
 
 	return &result, nil
@@ -175,10 +187,7 @@ func (d *MongoUserDao) GetAll() (*[]s.User, error) {
 
 // Update updates user if exists
 func (d *MongoUserDao) Update(u *s.User) error {
-	session := d.Session.Clone()
-	defer session.Close()
-
-	collection := session.DB(d.DatabaseName).C(collectionName)
+	collection := d.Client.Database(d.DatabaseName).Collection(collectionName)
 
 	updateBody := bson.M{}
 	if u.FirstName != "" {
@@ -194,32 +203,29 @@ func (d *MongoUserDao) Update(u *s.User) error {
 		updateBody["password"] = u.Password
 	}
 
-	return collection.UpdateId(u.ID, bson.M{"$set": updateBody})
+	_, err := collection.UpdateOne(d.Ctx, bson.M{"_id": u.ID}, bson.M{"$set": updateBody})
+	return err
 }
 
 // SetRecoveryCode sets password recovery code for user id
 func (d *MongoUserDao) SetRecoveryCode(id int, code string) error {
-	session := d.Session.Clone()
-	defer session.Close()
-
-	collection := session.DB(d.DatabaseName).C(collectionName)
+	collection := d.Client.Database(d.DatabaseName).Collection(collectionName)
 
 	updateBody := bson.M{"recoveryCode": code}
 
-	return collection.UpdateId(id, bson.M{"$set": updateBody})
+	_, err := collection.UpdateOne(d.Ctx, bson.M{"_id": id}, bson.M{"$set": updateBody})
+	return err
 }
 
 // GetRecoveryCode extracts recovery code for user id
 func (d *MongoUserDao) GetRecoveryCode(id int) (string, error) {
-	session := d.Session.Clone()
-	defer session.Close()
-
-	collection := session.DB(d.DatabaseName).C(collectionName)
+	collection := d.Client.Database(d.DatabaseName).Collection(collectionName)
 
 	var result struct {
 		RecoveryCode string `bson:"recoveryCode"`
 	}
-	err := collection.FindId(id).Select(bson.M{"recoveryCode": 1}).One(&result)
+
+	err := collection.FindOne(d.Ctx, bson.M{"_id": id}).Decode(&result)
 
 	if err != nil {
 		return "", err
@@ -230,27 +236,22 @@ func (d *MongoUserDao) GetRecoveryCode(id int) (string, error) {
 
 // SetResettingCode sets resetting code and removes recovery one
 func (d *MongoUserDao) SetResettingCode(id int, code string) error {
-	session := d.Session.Clone()
-	defer session.Close()
-
-	collection := session.DB(d.DatabaseName).C(collectionName)
+	collection := d.Client.Database(d.DatabaseName).Collection(collectionName)
 
 	updateBody := bson.M{"recoveryCode": "", "resettingCode": code}
 
-	return collection.UpdateId(id, bson.M{"$set": updateBody})
+	_, err := collection.UpdateOne(d.Ctx, bson.M{"_id": id}, bson.M{"$set": updateBody})
+	return err
 }
 
 // GetResettingCode extracts resetting code for user id
 func (d *MongoUserDao) GetResettingCode(id int) (string, error) {
-	session := d.Session.Clone()
-	defer session.Close()
-
-	collection := session.DB(d.DatabaseName).C(collectionName)
+	collection := d.Client.Database(d.DatabaseName).Collection(collectionName)
 
 	var result struct {
 		ResettingCode string `bson:"resettingCode"`
 	}
-	err := collection.FindId(id).Select(bson.M{"resettingCode": 1}).One(&result)
+	err := collection.FindOne(d.Ctx, bson.M{"_id": id}).Decode(&result)
 
 	if err != nil {
 		return "", err
@@ -261,12 +262,10 @@ func (d *MongoUserDao) GetResettingCode(id int) (string, error) {
 
 // ResetPassword updates password and removes resetting code
 func (d *MongoUserDao) ResetPassword(id int, passwordHash string) error {
-	session := d.Session.Clone()
-	defer session.Close()
-
-	collection := session.DB(d.DatabaseName).C(collectionName)
+	collection := d.Client.Database(d.DatabaseName).Collection(collectionName)
 
 	updateBody := bson.M{"password": passwordHash, "resettingCode": ""}
 
-	return collection.UpdateId(id, bson.M{"$set": updateBody})
+	_, err := collection.UpdateOne(d.Ctx, bson.M{"_id": id}, bson.M{"$set": updateBody})
+	return err
 }
