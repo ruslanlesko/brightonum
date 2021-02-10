@@ -38,7 +38,6 @@ func NewMongoUserDao(URL string, databaseName string) *MongoUserDao {
 	ctx, cancel := context.WithCancel(context.Background())
 	client, err := mongo.Connect(ctx, options.Client().ApplyURI(URL))
 
-	// session, err := mgo.Dial(URL)
 	if err != nil {
 		logger.Logf("ERROR Failed to dial mongo url: '%s'", URL)
 		panic(err)
@@ -107,7 +106,6 @@ func findNextID(ctx context.Context, collection *mongo.Collection) int {
 	})
 	defer cur.Close(ctx)
 
-	// .All(&resp)
 	if err != nil {
 		logger.Logf("ERROR %s", err.Error())
 		return -1
