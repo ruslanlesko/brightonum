@@ -370,6 +370,6 @@ func main() {
 	mailer := EmailMailer{Email: conf.Email, Password: conf.EmailPassword}
 	service := AuthService{UserDao: dao, Mailer: &mailer, Config: conf}
 	auth := Auth{AuthService: &service}
-	logger.Logf("INFO BrightonUM 1.5.2 is starting")
+	logger.Logf("INFO BrightonUM 1.5.3 is starting")
 	auth.start()
 }
