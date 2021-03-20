@@ -5,11 +5,13 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"ruslanlesko/brightonum/src/dao"
 	s "ruslanlesko/brightonum/src/structs"
 
 	"github.com/go-chi/chi"
+	"github.com/go-chi/chi/middleware"
 	"github.com/go-pkgz/lgr"
 	"github.com/jessevdk/go-flags"
 )
@@ -65,7 +67,6 @@ type PasswordResetPayload struct {
 }
 
 func (a *Auth) createUser(w http.ResponseWriter, r *http.Request) {
-	logger.Logf("INFO POST /v1/users request accepted")
 	a.options(w, r)
 	w.Header().Add("Content-type", "application/json; charset=utf-8")
 
@@ -99,7 +100,6 @@ func (a *Auth) createUser(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *Auth) updateUser(w http.ResponseWriter, r *http.Request) {
-	logger.Logf("INFO PATCH /v1/users request accepted")
 	a.options(w, r)
 	w.Header().Add("Content-type", "application/json; charset=utf-8")
 
@@ -154,7 +154,6 @@ func (a *Auth) updateUser(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *Auth) getToken(w http.ResponseWriter, r *http.Request) {
-	logger.Logf("INFO POST /v1/token request accepted")
 	a.options(w, r)
 	w.Header().Add("Content-type", "application/json; charset=utf-8")
 
@@ -192,7 +191,6 @@ func (a *Auth) getToken(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *Auth) getUsers(w http.ResponseWriter, r *http.Request) {
-	logger.Logf("INFO GET /v1/userinfo request accepted")
 	a.options(w, r)
 	w.Header().Add("Content-type", "application/json; charset=utf-8")
 
@@ -205,7 +203,6 @@ func (a *Auth) getUsers(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *Auth) getUserByUsername(w http.ResponseWriter, r *http.Request) {
-	logger.Logf("INFO GET /v1/userinfo/byusername request accepted")
 	a.options(w, r)
 	w.Header().Add("Content-type", "application/json; charset=utf-8")
 
@@ -223,7 +220,6 @@ func (a *Auth) getUserByUsername(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *Auth) getUserById(w http.ResponseWriter, r *http.Request) {
-	logger.Logf("INFO GET /v1/userinfo/byid request accepted")
 	a.options(w, r)
 	w.Header().Add("Content-type", "application/json; charset=utf-8")
 
@@ -247,7 +243,6 @@ func (a *Auth) getUserById(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *Auth) emailRecoveryCode(w http.ResponseWriter, r *http.Request) {
-	logger.Logf("INFO POST /v1/password-recovery/email request accepted")
 	a.options(w, r)
 	w.Header().Add("Content-type", "application/json; charset=utf-8")
 
@@ -273,7 +268,6 @@ func (a *Auth) emailRecoveryCode(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *Auth) exchangeRecoveryCode(w http.ResponseWriter, r *http.Request) {
-	logger.Logf("INFO POST /v1/password-recovery/exchange request accepted")
 	a.options(w, r)
 	w.Header().Add("Content-type", "application/json; charset=utf-8")
 
@@ -301,7 +295,6 @@ func (a *Auth) exchangeRecoveryCode(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *Auth) resetPassword(w http.ResponseWriter, r *http.Request) {
-	logger.Logf("INFO POST /v1/password-recovery/reset request accepted")
 	a.options(w, r)
 
 	if r.Body == nil {
@@ -338,6 +331,11 @@ func writeError(w http.ResponseWriter, err s.AuthError) {
 
 func (a *Auth) start() {
 	r := chi.NewRouter()
+
+	r.Use(func(h http.Handler) http.Handler {
+		return loggerHandler(h)
+	})
+
 	r.Route("/v1", func(r chi.Router) {
 		r.Options("/*", a.options)
 		r.Post("/users", a.createUser)
@@ -351,6 +349,20 @@ func (a *Auth) start() {
 		r.Post("/password-recovery/reset", a.resetPassword)
 	})
 	http.ListenAndServe(":2525", r)
+}
+
+func loggerHandler(h http.Handler) http.Handler {
+	return http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+		t1 := time.Now()
+		ww := middleware.NewWrapResponseWriter(rw, r.ProtoMajor)
+		logfmt := "INFO %s %s %d %d - %d ms"
+		defer func() {
+			if r.Method != "OPTIONS" {
+				logger.Logf(logfmt, r.Method, r.URL, ww.Status(), ww.BytesWritten(), time.Since(t1).Milliseconds())
+			}
+		}()
+		h.ServeHTTP(ww, r)
+	})
 }
 
 func main() {
