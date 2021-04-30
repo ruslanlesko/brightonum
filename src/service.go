@@ -21,6 +21,34 @@ type AuthService struct {
 	Config  Config
 }
 
+// InviteUser sends invite code for given email
+func (s *AuthService) InviteUser(email string, token string) error {
+	if !s.validateAdminToken(token) {
+		return st.AuthError{Msg: "Available only for admin", Status: 403}
+	}
+
+	var code = generateCode(32)
+	var user = st.User{Email: email, InviteCode: code}
+
+	id := s.UserDao.Save(&user)
+	if id < 0 {
+		return st.AuthError{Msg: "Cannot save user invite", Status: 500}
+	}
+
+	err := s.Mailer.SendInviteCode(email, code)
+	if err != nil {
+		logger.Logf("ERROR Email was not sent: " + err.Error())
+		return st.AuthError{Msg: err.Error(), Status: 500}
+	}
+
+	return err
+}
+
+func (s *AuthService) validateAdminToken(token string) bool {
+	u, valid := s.validateToken(token)
+	return valid && u.ID == s.Config.AdminID
+}
+
 // CreateUser creates new User
 func (s *AuthService) CreateUser(u *st.User) error {
 	logger.Logf("DEBUG creating user")
@@ -36,6 +64,17 @@ func (s *AuthService) CreateUser(u *st.User) error {
 		return st.AuthError{Msg: "Username already exists", Status: 400}
 	}
 
+	if s.Config.Private {
+		dbUser, err := s.UserDao.GetByEmail(u.Email)
+		if err != nil {
+			logger.Logf("ERROR Failed to fetch user, %s", err.Error())
+			return st.AuthError{Msg: err.Error(), Status: 500}
+		}
+		if u.InviteCode == "" || dbUser.InviteCode != u.InviteCode {
+			return st.AuthError{Msg: "Wrong email or invite code", Status: 401}
+		}
+	}
+
 	hashedPassword, err := crypto.Hash(u.Password)
 	if err != nil {
 		logger.Logf("ERROR Failed to hash password, %s", err.Error())
@@ -43,6 +82,7 @@ func (s *AuthService) CreateUser(u *st.User) error {
 	}
 
 	u.Password = hashedPassword
+	u.InviteCode = ""
 	ID := s.UserDao.Save(u)
 	if ID < 0 {
 		return st.AuthError{Msg: "Cannot save user", Status: 500}

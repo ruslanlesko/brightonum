@@ -10,11 +10,15 @@ type UserDao interface {
 	Save(*structs.User) int
 
 	// GetByUsername returns nil when user is not found
-	// Returns error is data access error occured
+	// Returns error if data access error occured
 	GetByUsername(string) (*structs.User, error)
 
+	// GetByEmail returns nil when user is not found
+	// Returns error if data access error occured
+	GetByEmail(string) (*structs.User, error)
+
 	// Get returns nil when user is not found
-	// Returns error is data access error occured
+	// Returns error if data access error occured
 	Get(int) (*structs.User, error)
 
 	// GetAll returns all users or empty list

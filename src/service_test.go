@@ -15,8 +15,44 @@ import (
 
 var mailer = MailerMock{}
 
+func TestAuthService_InviteUser(t *testing.T) {
+	var token = issueTestToken(user.ID, user.Username, createTestConfig().PrivKeyPath)
+	var email = "bojack@horseman.com"
+	var codeMatcher = func(code string) bool {
+		return len(code) == 32
+	}
+	var userMatcher = func(u *st.User) bool {
+		return u.Email == email && len(u.InviteCode) == 32
+	}
+
+	dao := dao.MockUserDao{}
+	dao.On("GetByUsername", user.Username).Return(&user, nil)
+	dao.On("Save", mock.MatchedBy(userMatcher)).Return(42)
+	m := MailerMock{}
+	m.On("SendInviteCode", email, mock.MatchedBy(codeMatcher)).Return(nil)
+	s := AuthService{&m, &dao, createTestConfig()}
+
+	err := s.InviteUser(email, token)
+	assert.Nil(t, err)
+	dao.AssertExpectations(t)
+	m.AssertExpectations(t)
+}
+
+func TestAuthService_InviteUser_Forbidden(t *testing.T) {
+	var token = issueTestToken(user.ID, user.Username, createTestConfig().PrivKeyPath)
+	var email = "bojack@horseman.com"
+
+	dao := dao.MockUserDao{}
+	dao.On("GetByUsername", user.Username).Return(&st.User{ID: user.ID + 1}, nil)
+	s := AuthService{&mailer, &dao, createTestConfig()}
+
+	err := s.InviteUser(email, token)
+	assert.Equal(t, st.AuthError{Msg: "Available only for admin", Status: 403}, err)
+	dao.AssertExpectations(t)
+}
+
 func TestAuthService_CreateUser(t *testing.T) {
-	var u = st.User{-1, "uname", "test", "user", "test@email.com", "pwd"}
+	var u = st.User{ID: -1, Username: "uname", FirstName: "test", LastName: "user", Email: "test@email.com", Password: "pwd"}
 
 	dao := dao.MockUserDao{}
 	dao.On("Save", &u).Return(1)
@@ -30,7 +66,7 @@ func TestAuthService_CreateUser(t *testing.T) {
 }
 
 func TestAuthService_CreateUser_DuplicateHandling(t *testing.T) {
-	u := st.User{-1, "alle", "Alle", "Alle", "alle@alle.com", "pwd"}
+	u := st.User{ID: -1, Username: "alle", FirstName: "Alle", LastName: "Alle", Email: "alle@alle.com", Password: "pwd"}
 
 	dao := dao.MockUserDao{}
 	dao.On("GetByUsername", u.Username).Return(&u, nil)
@@ -228,27 +264,27 @@ func TestAuthService_ResetPassword(t *testing.T) {
 }
 
 func createTestUser() st.User {
-	return st.User{42, "alle", "test", "user", "test@email.com", "$2a$04$Mhlu1.a4QchlVgGQFc/0N.qAw9tsXqm1OMwjJRaPRCWn47bpsRa4S"}
+	return st.User{ID: 42, Username: "alle", FirstName: "test", LastName: "user", Email: "test@email.com", Password: "$2a$04$Mhlu1.a4QchlVgGQFc/0N.qAw9tsXqm1OMwjJRaPRCWn47bpsRa4S"}
 }
 
 func createTestUserUpdatePayload() st.User {
-	return st.User{42, "", "", "", "changed@email.com", ""}
+	return st.User{ID: 42, Email: "changed@email.com"}
 }
 
 func createTestUserInfo() st.UserInfo {
-	return st.UserInfo{42, "alle", "test", "user", "test@email.com"}
+	return st.UserInfo{ID: 42, Username: "alle", FirstName: "test", LastName: "user", Email: "test@email.com"}
 }
 
 func createAnotherTestUser() st.User {
-	return st.User{43, "alle2", "test", "user", "test@email.com", "$2a$04$Mhlu1.a4QchlVgGQFc/0N.qAw9tsXqm1OMwjJRaPRCWn47bpsRa4S"}
+	return st.User{ID: 43, Username: "alle2", FirstName: "test", LastName: "user", Email: "test@email.com", Password: "$2a$04$Mhlu1.a4QchlVgGQFc/0N.qAw9tsXqm1OMwjJRaPRCWn47bpsRa4S"}
 }
 
 func createAdditionalTestUserInfo() st.UserInfo {
-	return st.UserInfo{43, "alle2", "test", "user", "test@email.com"}
+	return st.UserInfo{ID: 43, Username: "alle2", FirstName: "test", LastName: "user", Email: "test@email.com"}
 }
 
 func createTestConfig() Config {
-	return Config{PrivKeyPath: "../test_data/private.pem", PubKeyPath: "../test_data/public.pem"}
+	return Config{PrivKeyPath: "../test_data/private.pem", PubKeyPath: "../test_data/public.pem", AdminID: user.ID}
 }
 
 func testJWTIntField(tokenStr string, fieldName string, fieldValue int) bool {

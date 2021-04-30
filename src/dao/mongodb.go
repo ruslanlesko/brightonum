@@ -139,6 +139,27 @@ func (d *MongoUserDao) GetByUsername(username string) (*s.User, error) {
 	return result, nil
 }
 
+// GetByEmail returns nil when user is not found
+// Returns error if data access error occured
+func (d *MongoUserDao) GetByEmail(email string) (*s.User, error) {
+	result := &s.User{}
+
+	collection := d.Client.Database(d.DatabaseName).Collection(collectionName)
+	err := collection.FindOne(d.Ctx, bson.M{
+		"email": strings.ToLower(email),
+	}).Decode(result)
+
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			return nil, nil
+		}
+		logger.Logf("ERROR %s", err)
+		return nil, err
+	}
+
+	return result, nil
+}
+
 // Get returns user by id
 func (d *MongoUserDao) Get(id int) (*s.User, error) {
 	result := &s.User{}

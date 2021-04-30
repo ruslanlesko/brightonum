@@ -28,6 +28,19 @@ func (m *MockUserDao) GetByUsername(uname string) (*structs.User, error) {
 	return provided.(*structs.User), castedErr
 }
 
+func (m *MockUserDao) GetByEmail(uname string) (*structs.User, error) {
+	provided := m.Called(uname).Get(0)
+	err := m.Called(uname).Get(1)
+	var castedErr error = nil
+	if err != nil {
+		castedErr = err.(error)
+	}
+	if provided == nil {
+		return nil, castedErr
+	}
+	return provided.(*structs.User), castedErr
+}
+
 func (m *MockUserDao) Get(id int) (*structs.User, error) {
 	provided := m.Called(id).Get(0)
 	err := m.Called(id).Get(1)

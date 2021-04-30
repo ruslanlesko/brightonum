@@ -44,6 +44,17 @@ type TokenResponse struct {
 	RefreshToken string `json:"refreshToken"`
 }
 
+func TestFunctional_InviteUser(t *testing.T) {
+	var client = &http.Client{}
+	var token = issueTestToken(user.ID, user.Username, "../test_data/private.pem")
+	req, err := http.NewRequest(http.MethodPost, baseURL+"v1/invite", bytes.NewReader([]byte("{\"email\":\""+user.Email+"\"}")))
+	assert.Nil(t, err)
+	req.Header.Add("Authorization", "Bearer "+token)
+	resp, err := client.Do(req)
+	assert.Nil(t, err)
+	assert.Equal(t, 200, resp.StatusCode)
+}
+
 func TestFunctional_GetByUsername(t *testing.T) {
 	resp, err := http.Get(baseURL + "v1/userinfo/byusername/" + user.Username)
 	assert.Nil(t, err)
@@ -189,6 +200,10 @@ func setup() {
 		func(u *s.User) bool {
 			return u.Username == user2.Username && u.FirstName == user2.FirstName && u.LastName == user2.LastName
 		})).Return(43)
+	dao.On("Save", mock.MatchedBy(
+		func(u *s.User) bool {
+			return u.Email == user.Email && len(u.InviteCode) == 32
+		})).Return(99)
 	dao.On("Update", &updatedUser).Return(nil)
 	dao.On("SetRecoveryCode", user.ID,
 		mock.MatchedBy(func(hashedCode string) bool { return hashedCode != "" })).Return(nil)
@@ -208,8 +223,12 @@ func setup() {
 		func(code string) bool {
 			return len(code) == 6
 		})).Return(nil)
+	mailer.On("SendInviteCode", user.Email, mock.MatchedBy(
+		func(code string) bool {
+			return len(code) == 32
+		})).Return(nil)
 
-	conf := Config{PrivKeyPath: "../test_data/private.pem", PubKeyPath: "../test_data/public.pem"}
+	conf := Config{PrivKeyPath: "../test_data/private.pem", PubKeyPath: "../test_data/public.pem", AdminID: user.ID}
 	service := AuthService{UserDao: &dao, Mailer: &mailer, Config: conf}
 
 	auth := Auth{AuthService: &service}

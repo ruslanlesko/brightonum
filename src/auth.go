@@ -46,6 +46,12 @@ type Config struct {
 
 	// Enable debug logging
 	Debug bool `long:"debug" required:"false" description:"Enable debug logging"`
+
+	// Admin ID
+	AdminID int `long:"adminID" required:"true" description:"Admin ID"`
+
+	// Enable private mode
+	Private bool `long:"private" required:"false" description:"Private Mode"`
 }
 
 // RecoveryEmailPayload represents payload of password recovery email request
@@ -64,6 +70,44 @@ type PasswordResetPayload struct {
 	Username string `json:"username"`
 	Code     string `json:"code"`
 	Password string `json:"password"`
+}
+
+func (a *Auth) inviteUser(w http.ResponseWriter, r *http.Request) {
+	a.options(w, r)
+
+	authHeader := r.Header.Get("Authorization")
+	headerItems := strings.Split(authHeader, " ")
+
+	if len(headerItems) < 2 {
+		writeError(w, s.AuthError{Msg: "Authorization header is missing or invalid", Status: 401})
+		return
+	}
+
+	token := headerItems[1]
+
+	var payload struct {
+		Email string `json:"email"`
+	}
+
+	err := json.NewDecoder(r.Body).Decode(&payload)
+	if err != nil {
+		logger.Logf("ERROR Cannot decode JSON payload")
+		writeError(w, s.AuthError{Msg: err.Error(), Status: 400})
+		return
+	}
+
+	err = a.AuthService.InviteUser(payload.Email, token)
+	if err != nil {
+		authErr, isAuthErr := err.(s.AuthError)
+		if isAuthErr {
+			writeError(w, authErr)
+		} else {
+			writeError(w, s.AuthError{Msg: err.Error(), Status: 500})
+		}
+		return
+	}
+
+	w.WriteHeader(200)
 }
 
 func (a *Auth) createUser(w http.ResponseWriter, r *http.Request) {
@@ -338,6 +382,7 @@ func (a *Auth) start() {
 
 	r.Route("/v1", func(r chi.Router) {
 		r.Options("/*", a.options)
+		r.Post("/invite", a.inviteUser)
 		r.Post("/users", a.createUser)
 		r.Patch("/users/{userID}", a.updateUser)
 		r.Post("/token", a.getToken)

@@ -9,10 +9,11 @@ BrightonUM is a perfect choice if you are looking for self-hosted JWT-based simp
 ## API
 Port number: 2525
 
+* POST `/v1/invite` Sends invite to email and persists invite code
 * GET `/v1/userinfo/byid/{userId}` Returns user info by id
 * GET `/v1/userinfo/byusername/{username}` Returns user info by username
 * GET `/v1/userinfo` Returns list of all users info
-* POST `/v1/users` Creates user from JSON payload. Required string fields: username, firstName, lastName, email, password
+* POST `/v1/users` Creates user from JSON payload. Required string fields: inviteCode (only for private mode), username, firstName, lastName, email, password
 * PATCH `/v1/users/{id}` Updates user data
 * POST `/v1/token` Issues a token using basic auth. Returns JSON with 2 fields: accessToken and refreshToken
 * POST `/v1/token?type=refresh_token` Issues an access token using refresh token (bearer)
@@ -21,6 +22,25 @@ Port number: 2525
 * POST `/v1/password-recovery/reset` Reset password using code from the exchange step
 
 Any errors would result in corresponding 4xx or 5xx status code and a JSON body with single `error` string attribute containing error message.
+
+### Payload of user invite:
+```
+{
+  "email": "srah69@gmail.com"
+}
+```
+
+### Payload of user creation:
+```
+{
+  "inviteCode": "19284261",
+  "username": "sarah69",
+  "firstName": "Sarah",
+  "lastName": "Lynn",
+  "email": "srah69@gmail.com",
+  "password": "or@angeJu1ce"
+}
+```
 
 ### Payload of user info:
 ```
@@ -95,9 +115,11 @@ From the project root run
 * `--pubkey` - path to RSA public key in PEM format
 * `--mongoURL` - URL to mongo DB (mongodb://username:password@localhost/db)
 * `--databaseName` - Name of the database to use
+* `--adminID` - Admin User ID
 
 ### Optional Parameters
 * `--debug true` - enable debug logging
+* `--private true` - require invite code during registration
 
 ## RSA Key Generation On Linux
 
