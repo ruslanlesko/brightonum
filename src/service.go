@@ -70,7 +70,7 @@ func (s *AuthService) CreateUser(u *st.User) error {
 			logger.Logf("ERROR Failed to fetch user, %s", err.Error())
 			return st.AuthError{Msg: err.Error(), Status: 500}
 		}
-		if u.InviteCode == "" || dbUser.InviteCode != u.InviteCode {
+		if dbUser == nil || u.InviteCode == "" || dbUser.InviteCode != u.InviteCode {
 			return st.AuthError{Msg: "Wrong email or invite code", Status: 401}
 		}
 	}
