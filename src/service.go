@@ -11,7 +11,7 @@ import (
 
 	"time"
 
-	"github.com/dgrijalva/jwt-go"
+	"github.com/golang-jwt/jwt"
 )
 
 // AuthService provides all auth operations
