@@ -195,6 +195,20 @@ func TestAuthService_UpdateUserInvalidToken(t *testing.T) {
 	assert.Equal(t, st.AuthError{Msg: "Invalid token", Status: 401}, err)
 }
 
+func TestAuthService_DeleteUser(t *testing.T) {
+	user := createTestUser()
+	token := issueTestToken(user.ID, user.Username, createTestConfig().PrivKeyPath)
+
+	dao := dao.MockUserDao{}
+	dao.On("GetByUsername", user.Username).Return(&user, nil)
+	dao.On("DeleteById", user.ID).Return(nil)
+
+	s := AuthService{&mailer, &dao, createTestConfig()}
+
+	err := s.DeleteUser(user.ID, token)
+	assert.Nil(t, err)
+}
+
 func TestAuthService_SendRecoveryEmail(t *testing.T) {
 	user := createTestUser()
 

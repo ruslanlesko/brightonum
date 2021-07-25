@@ -4,7 +4,7 @@ COPY . /app
 
 WORKDIR /app
 
-RUN go test -run '^(TestAuthService_CreateUser|TestAuthService_RefreshToken|TestAuthService_ResetPassword|TestCrypto)$' ruslanlesko/brightonum/src
+RUN go test -run '^(TestAuthService_CreateUser|TestAuthService_RefreshToken|TestAuthService_ResetPassword|TestAuthService_DeleteUser|TestCrypto)$' ruslanlesko/brightonum/src
 
 RUN go build -o main ./src
 

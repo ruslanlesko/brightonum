@@ -120,6 +120,21 @@ func (s *AuthService) UpdateUser(u *st.User, token string) error {
 	return nil
 }
 
+// DeleteUser delets user
+func (s *AuthService) DeleteUser(id int, token string) error {
+	tokenUser, valid := s.validateToken(token)
+	if !valid || tokenUser.ID != id && tokenUser.ID != s.Config.AdminID {
+		return st.AuthError{Msg: "Invalid token", Status: 401}
+	}
+
+	err := s.UserDao.DeleteById(id)
+	if err != nil {
+		return st.AuthError{Msg: err.Error(), Status: 500}
+	}
+
+	return nil
+}
+
 func (s *AuthService) usernameExists(username string) (bool, error) {
 	u, err := s.UserDao.GetByUsername(username)
 	return u != nil, err

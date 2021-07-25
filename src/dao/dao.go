@@ -41,4 +41,7 @@ type UserDao interface {
 
 	// ResetPassword updates password and removes resetting code
 	ResetPassword(int, string) error
+
+	// DeleteById deletes user by id
+	DeleteById(int) error
 }

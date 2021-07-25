@@ -15,6 +15,7 @@ Port number: 2525
 * GET `/v1/userinfo` Returns list of all users info
 * POST `/v1/users` Creates user from JSON payload. Required string fields: inviteCode (only for private mode), username, firstName, lastName, email, password
 * PATCH `/v1/users/{id}` Updates user data
+* DELETE `/v1/users/{id}` Deletes user
 * POST `/v1/token` Issues a token using basic auth. Returns JSON with 2 fields: accessToken and refreshToken
 * POST `/v1/token?type=refresh_token` Issues an access token using refresh token (bearer)
 * POST `/v1/password-recovery/email` Sends email with a password recovery code

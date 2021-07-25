@@ -191,6 +191,30 @@ func TestFunctional_ResetPassword(t *testing.T) {
 	assert.Equal(t, 200, resp.StatusCode)
 }
 
+func TestFunctional_Delete(t *testing.T) {
+	client := &http.Client{}
+
+	req, err := http.NewRequest(http.MethodPost, baseURL+"v1/token", nil)
+	assert.Nil(t, err)
+	req.Header.Add("Authorization", "Basic YWxsZTpvYWtoZWFydA==")
+	resp, err := client.Do(req)
+	assert.Nil(t, err)
+
+	var tokenResp TokenResponse
+	err = json.NewDecoder(resp.Body).Decode(&tokenResp)
+	assert.Nil(t, err)
+
+	assert.True(t, len(tokenResp.AccessToken) > 1)
+	assert.True(t, len(tokenResp.RefreshToken) > 1)
+
+	req, err = http.NewRequest(http.MethodDelete, baseURL+"v1/users/42", nil)
+	assert.Nil(t, err)
+	req.Header.Add("Authorization", "Bearer "+tokenResp.AccessToken)
+	resp, err = client.Do(req)
+	assert.Nil(t, err)
+	assert.Equal(t, 200, resp.StatusCode)
+}
+
 func setup() {
 	dao := dao.MockUserDao{}
 	dao.On("GetByUsername", user.Username).Return(&user, nil)
@@ -217,6 +241,7 @@ func setup() {
 		"ResetPassword",
 		user.ID,
 		mock.MatchedBy(func(hashedPassword string) bool { return hashedPassword != "" })).Return(nil)
+	dao.On("DeleteById", user.ID).Return(nil)
 
 	mailer := MailerMock{}
 	mailer.On("SendRecoveryCode", user.Email, mock.MatchedBy(

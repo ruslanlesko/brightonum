@@ -193,7 +193,44 @@ func (a *Auth) updateUser(w http.ResponseWriter, r *http.Request) {
 		} else {
 			writeError(w, s.AuthError{Msg: err.Error(), Status: 500})
 		}
+	}
+}
+
+func (a *Auth) deleteUser(w http.ResponseWriter, r *http.Request) {
+	a.options(w, r)
+
+	authHeader := r.Header.Get("Authorization")
+	headerItems := strings.Split(authHeader, " ")
+
+	if len(headerItems) < 2 {
+		writeError(w, s.AuthError{Msg: "Authorization header is missing or invalid", Status: 401})
 		return
+	}
+
+	token := headerItems[1]
+
+	if r.Body == nil {
+		logger.Logf("ERROR Data is missing")
+		writeError(w, s.AuthError{Msg: "Request body is missing", Status: 400})
+		return
+	}
+
+	userIDStr := chi.URLParam(r, "userID")
+	userID, err := strconv.Atoi(userIDStr)
+	if err != nil {
+		logger.Logf("ERROR Cannot parse user ID: %d", userID)
+		writeError(w, s.AuthError{Msg: "Cannot parse user ID", Status: 400})
+		return
+	}
+
+	err = a.AuthService.DeleteUser(userID, token)
+	if err != nil {
+		authErr, isAuthErr := err.(s.AuthError)
+		if isAuthErr {
+			writeError(w, authErr)
+		} else {
+			writeError(w, s.AuthError{Msg: err.Error(), Status: 500})
+		}
 	}
 }
 
@@ -365,7 +402,7 @@ func (a *Auth) resetPassword(w http.ResponseWriter, r *http.Request) {
 func (a *Auth) options(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Headers", "authorization")
-	w.Header().Set("Access-Control-Allow-Methods", "POST, GET, PATCH, OPTIONS")
+	w.Header().Set("Access-Control-Allow-Methods", "POST, GET, PATCH, DELETE, OPTIONS")
 }
 
 func writeError(w http.ResponseWriter, err s.AuthError) {
@@ -385,6 +422,7 @@ func (a *Auth) start() {
 		r.Post("/invite", a.inviteUser)
 		r.Post("/users", a.createUser)
 		r.Patch("/users/{userID}", a.updateUser)
+		r.Delete("/users/{userID}", a.deleteUser)
 		r.Post("/token", a.getToken)
 		r.Get("/userinfo/byid/{userID}", a.getUserById)
 		r.Get("/userinfo/byusername/{username}", a.getUserByUsername)

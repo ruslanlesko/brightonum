@@ -251,6 +251,13 @@ func (d *MongoUserDao) ResetPassword(id int, passwordHash string) error {
 	return d.setFieldAndWipeOtherForId(id, "password", passwordHash, "resettingCode")
 }
 
+// DeleteById deletes user by id
+func (d *MongoUserDao) DeleteById(id int) error {
+	collection := d.Client.Database(d.DatabaseName).Collection(collectionName)
+	_, err := collection.DeleteOne(d.Ctx, bson.M{"_id": id})
+	return err
+}
+
 func (d *MongoUserDao) getStringFieldForId(id int, field string) (string, error) {
 	collection := d.Client.Database(d.DatabaseName).Collection(collectionName)
 
