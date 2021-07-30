@@ -56,8 +56,13 @@ func TestFunctional_InviteUser(t *testing.T) {
 }
 
 func TestFunctional_GetByUsername(t *testing.T) {
-	resp, err := http.Get(baseURL + "v1/userinfo/byusername/" + user.Username)
+	var client = &http.Client{}
+	var token = issueTestToken(user.ID, user.Username, "../test_data/private.pem")
+	req, err := http.NewRequest(http.MethodGet, baseURL+"v1/userinfo/byusername/"+user.Username, nil)
 	assert.Nil(t, err)
+	req.Header.Add("Authorization", "Bearer "+token)
+	resp, err := client.Do(req)
+	assert.Equal(t, 200, resp.StatusCode)
 
 	defer resp.Body.Close()
 
@@ -67,8 +72,13 @@ func TestFunctional_GetByUsername(t *testing.T) {
 }
 
 func TestFunctional_GetById(t *testing.T) {
-	resp, err := http.Get(baseURL + "v1/userinfo/byid/" + strconv.Itoa(user.ID))
+	var client = &http.Client{}
+	var token = issueTestToken(user.ID, user.Username, "../test_data/private.pem")
+	req, err := http.NewRequest(http.MethodGet, baseURL+"v1/userinfo/byid/"+strconv.Itoa(user.ID), nil)
 	assert.Nil(t, err)
+	req.Header.Add("Authorization", "Bearer "+token)
+	resp, err := client.Do(req)
+	assert.Equal(t, 200, resp.StatusCode)
 
 	defer resp.Body.Close()
 

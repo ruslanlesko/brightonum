@@ -275,7 +275,17 @@ func (a *Auth) getUsers(w http.ResponseWriter, r *http.Request) {
 	a.options(w, r)
 	w.Header().Add("Content-type", "application/json; charset=utf-8")
 
-	users, err := a.AuthService.GetUsers()
+	authHeader := r.Header.Get("Authorization")
+	headerItems := strings.Split(authHeader, " ")
+
+	if len(headerItems) < 2 {
+		writeError(w, s.AuthError{Msg: "Authorization header is missing or invalid", Status: 401})
+		return
+	}
+
+	token := headerItems[1]
+
+	users, err := a.AuthService.GetUsers(token)
 	if err != nil {
 		writeError(w, err.(s.AuthError))
 		return
@@ -287,8 +297,18 @@ func (a *Auth) getUserByUsername(w http.ResponseWriter, r *http.Request) {
 	a.options(w, r)
 	w.Header().Add("Content-type", "application/json; charset=utf-8")
 
+	authHeader := r.Header.Get("Authorization")
+	headerItems := strings.Split(authHeader, " ")
+
+	if len(headerItems) < 2 {
+		writeError(w, s.AuthError{Msg: "Authorization header is missing or invalid", Status: 401})
+		return
+	}
+
+	token := headerItems[1]
+
 	username := chi.URLParam(r, "username")
-	user, err := a.AuthService.GetUserByUsername(username)
+	user, err := a.AuthService.GetUserByUsername(username, token)
 	if err != nil {
 		writeError(w, err.(s.AuthError))
 		return
@@ -304,6 +324,16 @@ func (a *Auth) getUserById(w http.ResponseWriter, r *http.Request) {
 	a.options(w, r)
 	w.Header().Add("Content-type", "application/json; charset=utf-8")
 
+	authHeader := r.Header.Get("Authorization")
+	headerItems := strings.Split(authHeader, " ")
+
+	if len(headerItems) < 2 {
+		writeError(w, s.AuthError{Msg: "Authorization header is missing or invalid", Status: 401})
+		return
+	}
+
+	token := headerItems[1]
+
 	userIDStr := chi.URLParam(r, "userID")
 	userID, err := strconv.Atoi(userIDStr)
 	if err != nil {
@@ -311,7 +341,7 @@ func (a *Auth) getUserById(w http.ResponseWriter, r *http.Request) {
 		writeError(w, s.AuthError{Msg: "Cannot parse user ID", Status: 400})
 		return
 	}
-	user, err := a.AuthService.GetUserById(userID)
+	user, err := a.AuthService.GetUserById(userID, token)
 	if err != nil {
 		writeError(w, err.(s.AuthError))
 		return
@@ -465,6 +495,6 @@ func main() {
 	mailer := EmailMailer{Email: conf.Email, Password: conf.EmailPassword}
 	service := AuthService{UserDao: dao, Mailer: &mailer, Config: conf}
 	auth := Auth{AuthService: &service}
-	logger.Logf("INFO BrightonUM 1.7.3 is starting")
+	logger.Logf("INFO BrightonUM 1.7.4 is starting")
 	auth.start()
 }

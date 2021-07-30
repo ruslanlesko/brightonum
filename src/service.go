@@ -302,7 +302,11 @@ func (s *AuthService) GetUserByToken(t string) (*st.User, error) {
 }
 
 // GetUserById returns user info for specific id
-func (s *AuthService) GetUserById(id int) (*st.UserInfo, error) {
+func (s *AuthService) GetUserById(id int, token string) (*st.UserInfo, error) {
+	_, ok := s.validateToken(token)
+	if !ok {
+		return nil, st.AuthError{Msg: "Invalid token", Status: 401}
+	}
 	u, err := s.UserDao.Get(id)
 	if err != nil {
 		return nil, st.AuthError{Msg: err.Error(), Status: 500}
@@ -314,7 +318,11 @@ func (s *AuthService) GetUserById(id int) (*st.UserInfo, error) {
 }
 
 // GetUserByUsername returns user info for username
-func (s *AuthService) GetUserByUsername(username string) (*st.UserInfo, error) {
+func (s *AuthService) GetUserByUsername(username string, token string) (*st.UserInfo, error) {
+	_, ok := s.validateToken(token)
+	if !ok {
+		return nil, st.AuthError{Msg: "Invalid token", Status: 401}
+	}
 	u, err := s.UserDao.GetByUsername(username)
 	if err != nil {
 		return nil, st.AuthError{Msg: err.Error(), Status: 500}
@@ -326,7 +334,11 @@ func (s *AuthService) GetUserByUsername(username string) (*st.UserInfo, error) {
 }
 
 // GetUsers returns all users info
-func (s *AuthService) GetUsers() (*[]st.UserInfo, error) {
+func (s *AuthService) GetUsers(token string) (*[]st.UserInfo, error) {
+	_, ok := s.validateToken(token)
+	if !ok {
+		return nil, st.AuthError{Msg: "Invalid token", Status: 401}
+	}
 	us, err := s.UserDao.GetAll()
 	if err != nil {
 		return nil, st.AuthError{Msg: err.Error(), Status: 500}

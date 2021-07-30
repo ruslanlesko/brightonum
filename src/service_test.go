@@ -155,16 +155,18 @@ func TestAuthService_GetUserByToken(t *testing.T) {
 func TestAuthService_GetUsers(t *testing.T) {
 	user1 := createTestUser()
 	user2 := createAnotherTestUser()
+	token := issueTestToken(user1.ID, user1.Username, createTestConfig().PrivKeyPath)
 
 	dao := dao.MockUserDao{}
 	dao.On("GetAll").Return(&[]st.User{user1, user2}, nil)
+	dao.On("GetByUsername", user1.Username).Return(&user1, nil)
 
 	s := AuthService{&mailer, &dao, createTestConfig()}
 
 	userInfo := createTestUserInfo()
 	userInfo2 := createAdditionalTestUserInfo()
 	expected := &[]st.UserInfo{userInfo, userInfo2}
-	us, err := s.GetUsers()
+	us, err := s.GetUsers(token)
 	assert.Nil(t, err)
 	assert.Equal(t, expected, us)
 }
