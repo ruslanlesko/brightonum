@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"ruslanlesko/brightonum/src/dao"
+	"ruslanlesko/brightonum/src/email"
 	s "ruslanlesko/brightonum/src/structs"
 
 	"github.com/go-chi/chi"
@@ -52,6 +53,18 @@ type Config struct {
 
 	// Enable private mode
 	Private bool `long:"private" required:"false" description:"Private Mode"`
+
+	// Enable email verification
+	EmailVerification bool `long:"emailVerification" required:"false" description:"Enable email verification"`
+
+	// Email Server
+	EmailServer string `long:"emailServer" required:"true" description:"Email Server (such as smtp.office365.com)"`
+
+	// Email Port
+	EmailPort int `long:"emailPort" required:"true" description:"Email Port (such as 587)"`
+
+	// Site Name
+	SiteName string `long:"siteName" required:"false" description:"Site Name used in email subjects"`
 }
 
 // RecoveryEmailPayload represents payload of password recovery email request
@@ -70,6 +83,12 @@ type PasswordResetPayload struct {
 	Username string `json:"username"`
 	Code     string `json:"code"`
 	Password string `json:"password"`
+}
+
+// VerificationCodePayload represents payload for user email verification
+type VerificationCodePayload struct {
+	Username string `json:"username"`
+	Code     string `json:"code"`
 }
 
 func (a *Auth) inviteUser(w http.ResponseWriter, r *http.Request) {
@@ -193,6 +212,30 @@ func (a *Auth) updateUser(w http.ResponseWriter, r *http.Request) {
 		} else {
 			writeError(w, s.AuthError{Msg: err.Error(), Status: 500})
 		}
+	}
+}
+
+func (a *Auth) verifyUser(w http.ResponseWriter, r *http.Request) {
+	a.options(w, r)
+	w.Header().Add("Content-type", "application/json; charset=utf-8")
+
+	if r.Body == nil {
+		logger.Logf("ERROR Data is missing")
+		writeError(w, s.AuthError{Msg: "Request body is missing", Status: 400})
+		return
+	}
+
+	var payload VerificationCodePayload
+	err := json.NewDecoder(r.Body).Decode(&payload)
+	if err != nil || payload.Code == "" || payload.Username == "" {
+		logger.Logf("ERROR Invalid payload")
+		writeError(w, s.AuthError{Msg: err.Error(), Status: 400})
+		return
+	}
+	err = a.AuthService.VerifyUser(payload.Username, payload.Code)
+	if err != nil {
+		writeError(w, err.(s.AuthError))
+		return
 	}
 }
 
@@ -453,6 +496,7 @@ func (a *Auth) start() {
 		r.Post("/users", a.createUser)
 		r.Patch("/users/{userID}", a.updateUser)
 		r.Delete("/users/{userID}", a.deleteUser)
+		r.Post("/users/verify", a.verifyUser)
 		r.Post("/token", a.getToken)
 		r.Get("/userinfo/byid/{userID}", a.getUserById)
 		r.Get("/userinfo/byusername/{username}", a.getUserByUsername)
@@ -492,9 +536,9 @@ func main() {
 	}
 
 	dao := dao.NewMongoUserDao(conf.MongoDBURL, conf.DatabaseName)
-	mailer := EmailMailer{Email: conf.Email, Password: conf.EmailPassword}
+	mailer := email.EmailMailer{Email: conf.Email, Password: conf.EmailPassword, Server: conf.EmailServer, Port: conf.EmailPort, SiteName: conf.SiteName}
 	service := AuthService{UserDao: dao, Mailer: &mailer, Config: conf}
 	auth := Auth{AuthService: &service}
-	logger.Logf("INFO BrightonUM 1.7.4 is starting")
+	logger.Logf("INFO BrightonUM 1.8.0 is starting")
 	auth.start()
 }

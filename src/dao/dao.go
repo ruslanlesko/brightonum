@@ -44,4 +44,7 @@ type UserDao interface {
 
 	// DeleteById deletes user by id
 	DeleteById(int) error
+
+	// ClearVerificationCode clears verification code for user id
+	ClearVerificationCode(int) error
 }

@@ -10,10 +10,11 @@ import (
 	"github.com/stretchr/testify/mock"
 
 	"ruslanlesko/brightonum/src/dao"
+	"ruslanlesko/brightonum/src/email"
 	st "ruslanlesko/brightonum/src/structs"
 )
 
-var mailer = MailerMock{}
+var mailer = email.MailerMock{}
 
 func TestAuthService_InviteUser(t *testing.T) {
 	var token = issueTestToken(user.ID, user.Username, createTestConfig().PrivKeyPath)
@@ -28,14 +29,13 @@ func TestAuthService_InviteUser(t *testing.T) {
 	dao := dao.MockUserDao{}
 	dao.On("GetByUsername", user.Username).Return(&user, nil)
 	dao.On("Save", mock.MatchedBy(userMatcher)).Return(42)
-	m := MailerMock{}
-	m.On("SendInviteCode", email, mock.MatchedBy(codeMatcher)).Return(nil)
-	s := AuthService{&m, &dao, createTestConfig()}
+	mailer.On("SendInviteCode", email, mock.MatchedBy(codeMatcher)).Return(nil)
+	s := AuthService{&mailer, &dao, createTestConfig()}
 
 	err := s.InviteUser(email, token)
 	assert.Nil(t, err)
 	dao.AssertExpectations(t)
-	m.AssertExpectations(t)
+	mailer.AssertExpectations(t)
 }
 
 func TestAuthService_InviteUser_Forbidden(t *testing.T) {

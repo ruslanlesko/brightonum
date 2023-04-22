@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"ruslanlesko/brightonum/src/crypto"
 	"ruslanlesko/brightonum/src/dao"
+	"ruslanlesko/brightonum/src/email"
 	st "ruslanlesko/brightonum/src/structs"
 	"strconv"
 
@@ -16,7 +17,7 @@ import (
 
 // AuthService provides all auth operations
 type AuthService struct {
-	Mailer  Mailer
+	Mailer  email.Mailer
 	UserDao dao.UserDao
 	Config  Config
 }
@@ -81,6 +82,12 @@ func (s *AuthService) CreateUser(u *st.User) error {
 		return st.AuthError{Msg: err.Error(), Status: 500}
 	}
 
+	var verificationCode = generateCode(4)
+
+	if s.Config.EmailVerification {
+		u.VerificationCode = verificationCode
+	}
+
 	u.Password = hashedPassword
 	u.InviteCode = ""
 	ID := s.UserDao.Save(u)
@@ -88,6 +95,14 @@ func (s *AuthService) CreateUser(u *st.User) error {
 		return st.AuthError{Msg: "Cannot save user", Status: 500}
 	}
 	u.ID = ID
+
+	if s.Config.EmailVerification {
+		err := s.Mailer.SendVerificationCode(u.Email, verificationCode)
+		if err != nil {
+			return st.AuthError{Msg: err.Error(), Status: 500}
+		}
+	}
+
 	return nil
 }
 
@@ -113,6 +128,31 @@ func (s *AuthService) UpdateUser(u *st.User, token string) error {
 	}
 
 	err = s.UserDao.Update(u)
+	if err != nil {
+		return st.AuthError{Msg: err.Error(), Status: 500}
+	}
+
+	return nil
+}
+
+// VerifyUser verifies user email by code
+func (s *AuthService) VerifyUser(username string, code string) error {
+	logger.Logf("DEBUG Verifying user id with username %s", username)
+
+	user, err := s.UserDao.GetByUsername(username)
+	if err != nil {
+		return st.AuthError{Msg: err.Error(), Status: 500}
+	}
+	if user == nil {
+		return st.AuthError{Msg: "User does not exist", Status: 404}
+	}
+
+	if code == "" || user.VerificationCode != code {
+		return st.AuthError{Msg: "Verification code does not match", Status: 400}
+	}
+
+	user.VerificationCode = ""
+	err = s.UserDao.ClearVerificationCode(user.ID)
 	if err != nil {
 		return st.AuthError{Msg: err.Error(), Status: 500}
 	}
@@ -162,6 +202,10 @@ func (s *AuthService) BasicAuthToken(username, password string) (string, string,
 
 	if user == nil || !crypto.Match(password, user.Password) {
 		return "", "", st.AuthError{Msg: "Username or password is wrong", Status: 403}
+	}
+
+	if len(user.VerificationCode) > 0 {
+		return "", "", st.AuthError{Msg: "User is not verified", Status: 409}
 	}
 
 	tokenString, err := s.issueAccessToken(user)

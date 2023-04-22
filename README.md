@@ -16,6 +16,7 @@ Port number: 2525
 * POST `/v1/users` Creates user from JSON payload. Required string fields: inviteCode (only for private mode), username, firstName, lastName, email, password
 * PATCH `/v1/users/{id}` Updates user data
 * DELETE `/v1/users/{id}` Deletes user
+* POST `/v1/users/verify` Verifies user email by code
 * POST `/v1/token` Issues a token using basic auth. Returns JSON with 2 fields: accessToken and refreshToken
 * POST `/v1/token?type=refresh_token` Issues an access token using refresh token (bearer)
 * POST `/v1/password-recovery/email` Sends email with a password recovery code
@@ -103,6 +104,14 @@ Token will expire in a year. `exp` field is Unix time.
 }
 ```
 
+### Payload of email verification request
+```
+{
+  "username":"sarah69"
+  "code": "1239874560"
+}
+```
+
 ## Build and run
 
 Make sure that you have Go 1.15 or later, MongoDB and RSA Keys (described below) on your machine.
@@ -117,10 +126,16 @@ From the project root run
 * `--mongoURL` - URL to mongo DB (mongodb://username:password@localhost/db)
 * `--databaseName` - Name of the database to use
 * `--adminID` - Admin User ID
+* `--email` - Email for sending emails
+* `--emailPassword` - Email Password for sending emails
+* `--emailServer` - Email Server for sending emails
+* `--emailPort` - Email Port for sending emails
 
 ### Optional Parameters
 * `--debug true` - enable debug logging
 * `--private true` - require invite code during registration
+* `--emailVerification true` - require email verification (by sending confirmation codes)
+* `--siteName` - Site Name to be included in email bodies
 
 ## RSA Key Generation On Linux
 

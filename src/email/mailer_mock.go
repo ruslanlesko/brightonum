@@ -1,4 +1,4 @@
-package main
+package email
 
 import (
 	"github.com/stretchr/testify/mock"
@@ -16,5 +16,10 @@ func (m *MailerMock) SendRecoveryCode(to string, code string) error {
 
 // SendInviteCode mock sending invite code
 func (m *MailerMock) SendInviteCode(to string, code string) error {
+	return m.Called(to, code).Error(0)
+}
+
+// SendVerificationCode mock sending verification code
+func (m *MailerMock) SendVerificationCode(to string, code string) error {
 	return m.Called(to, code).Error(0)
 }

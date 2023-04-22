@@ -226,6 +226,16 @@ func (d *MongoUserDao) Update(u *s.User) error {
 	return err
 }
 
+// ClearVerificationCode clears verification code for user id
+func (d *MongoUserDao) ClearVerificationCode(id int) error {
+	collection := d.Client.Database(d.DatabaseName).Collection(collectionName)
+
+	updateBody := bson.M{"verificationCode": ""}
+
+	_, err := collection.UpdateOne(d.Ctx, bson.M{"_id": id}, bson.M{"$set": updateBody})
+	return err
+}
+
 // SetRecoveryCode sets password recovery code for user id
 func (d *MongoUserDao) SetRecoveryCode(id int, code string) error {
 	return d.setFieldAndWipeOtherForId(id, "recoveryCode", code, "resettingCode")

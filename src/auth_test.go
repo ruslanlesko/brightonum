@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"ruslanlesko/brightonum/src/dao"
+	"ruslanlesko/brightonum/src/email"
 	s "ruslanlesko/brightonum/src/structs"
 
 	"github.com/stretchr/testify/assert"
@@ -253,7 +254,7 @@ func setup() {
 		mock.MatchedBy(func(hashedPassword string) bool { return hashedPassword != "" })).Return(nil)
 	dao.On("DeleteById", user.ID).Return(nil)
 
-	mailer := MailerMock{}
+	mailer := email.MailerMock{}
 	mailer.On("SendRecoveryCode", user.Email, mock.MatchedBy(
 		func(code string) bool {
 			return len(code) == 6

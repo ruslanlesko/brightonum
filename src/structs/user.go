@@ -6,13 +6,14 @@ import (
 
 // User structure
 type User struct {
-	ID         int    `bson:"_id"`
-	Username   string `bson:"username"`
-	FirstName  string `bson:"firstName"`
-	LastName   string `bson:"lastName"`
-	Email      string `bson:"email"`
-	Password   string `bson:"password"`
-	InviteCode string `bson:"inviteCode"`
+	ID               int    `bson:"_id"`
+	Username         string `bson:"username"`
+	FirstName        string `bson:"firstName"`
+	LastName         string `bson:"lastName"`
+	Email            string `bson:"email"`
+	Password         string `bson:"password"`
+	InviteCode 	     string `bson:"inviteCode"`
+	VerificationCode string `bson:"verificationCode"`
 }
 
 // UserInfo structure

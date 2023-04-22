@@ -106,3 +106,7 @@ func (m *MockUserDao) ResetPassword(id int, passwordHash string) error {
 func (m *MockUserDao) DeleteById(id int) error {
 	return m.Called(id).Error(0)
 }
+
+func (m *MockUserDao) ClearVerificationCode(id int) error {
+	return m.Called(id).Error(0)
+}
