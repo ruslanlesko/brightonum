@@ -264,7 +264,7 @@ func setup() {
 			return len(code) == 32
 		})).Return(nil)
 
-	conf := Config{PrivKeyPath: "../test_data/private.pem", PubKeyPath: "../test_data/public.pem", AdminID: user.ID}
+	conf := Config{PrivKeyPath: "../test_data/private.pem", PubKeyPath: "../test_data/public.pem", AdminIDs: []int{user.ID}}
 	service := AuthService{UserDao: &dao, Mailer: &mailer, Config: conf}
 
 	auth := Auth{AuthService: &service}

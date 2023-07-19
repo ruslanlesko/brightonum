@@ -47,7 +47,7 @@ func (s *AuthService) InviteUser(email string, token string) error {
 
 func (s *AuthService) validateAdminToken(token string) bool {
 	u, valid := s.validateToken(token)
-	return valid && u.ID == s.Config.AdminID
+	return valid && contains(s.Config.AdminIDs, u.ID)
 }
 
 // CreateUser creates new User
@@ -163,7 +163,7 @@ func (s *AuthService) VerifyUser(username string, code string) error {
 // DeleteUser delets user
 func (s *AuthService) DeleteUser(id int, token string) error {
 	tokenUser, valid := s.validateToken(token)
-	if !valid || tokenUser.ID != id && tokenUser.ID != s.Config.AdminID {
+	if !valid || tokenUser.ID != id && contains(s.Config.AdminIDs, tokenUser.ID) {
 		return st.AuthError{Msg: "Invalid token", Status: 401}
 	}
 
@@ -239,6 +239,7 @@ func (s *AuthService) issueAccessToken(user *st.User) (string, error) {
 		"sub":    user.Username,
 		"userId": user.ID,
 		"exp":    time.Now().Add(time.Hour).UTC().Unix(),
+		"admin":  contains(s.Config.AdminIDs, user.ID),
 	})
 
 	tokenString, err := token.SignedString(key)
@@ -513,4 +514,13 @@ func mapToUserInfoList(us *[]st.User) *[]st.UserInfo {
 
 func mapToUserInfo(u *st.User) *st.UserInfo {
 	return &st.UserInfo{ID: u.ID, Username: u.Username, FirstName: u.FirstName, LastName: u.LastName, Email: u.Email}
+}
+
+func contains(slice []int, element int) bool {
+	for _, item := range slice {
+		if item == element {
+			return true
+		}
+	}
+	return false
 }

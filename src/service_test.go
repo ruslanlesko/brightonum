@@ -300,7 +300,7 @@ func createAdditionalTestUserInfo() st.UserInfo {
 }
 
 func createTestConfig() Config {
-	return Config{PrivKeyPath: "../test_data/private.pem", PubKeyPath: "../test_data/public.pem", AdminID: user.ID}
+	return Config{PrivKeyPath: "../test_data/private.pem", PubKeyPath: "../test_data/public.pem", AdminIDs: []int{user.ID}}
 }
 
 func testJWTIntField(tokenStr string, fieldName string, fieldValue int) bool {
