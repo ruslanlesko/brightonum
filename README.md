@@ -128,7 +128,7 @@ From the project root run
 * `--adminID` - Admin User ID
 * `--email` - Email for sending emails
 * `--emailPassword` - Email Password for sending emails
-* `--emailServer` - Email Server for sending emails
+* `--emailServer` - Email Server for sending emails (please note that current implementation only works with Gmail)
 * `--emailPort` - Email Port for sending emails
 
 ### Optional Parameters
