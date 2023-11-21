@@ -474,7 +474,7 @@ func (a *Auth) resetPassword(w http.ResponseWriter, r *http.Request) {
 
 func (a *Auth) options(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Access-Control-Allow-Headers", "authorization")
+	w.Header().Set("Access-Control-Allow-Headers", "authorization, content-type")
 	w.Header().Set("Access-Control-Allow-Methods", "POST, GET, PATCH, DELETE, OPTIONS")
 }
 
@@ -539,6 +539,6 @@ func main() {
 	mailer := email.EmailMailer{Email: conf.Email, Password: conf.EmailPassword, Server: conf.EmailServer, Port: conf.EmailPort, SiteName: conf.SiteName}
 	service := AuthService{UserDao: dao, Mailer: &mailer, Config: conf}
 	auth := Auth{AuthService: &service}
-	logger.Logf("INFO BrightonUM 1.8.0 is starting")
+	logger.Logf("INFO BrightonUM 1.9.1 is starting")
 	auth.start()
 }
